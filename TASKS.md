@@ -36,23 +36,23 @@ Status legend: `[ ]` not started · `[x]` done · `[~]` in progress / partial
 
 ## Phase 2 — Task 1: EDA notebook
 
-- [ ] **T012** Load the 4 source CSVs in the notebook, print shapes
-- [ ] **T013** Profile each table: dtypes, missing-value counts/%, duplicate rows
-- [ ] **T014** Document missingness reasoning as markdown (structural nulls, not bugs)
-- [ ] **T015** Parse date fields; derive year/month/year-month; print date range
-- [ ] **T016** Outlier/suspicious-value checks (profit-margin extremes, negative delivery days, order_status vs. return_status consistency, `dataset_statistics.csv` "Total Products Used" mislabel)
-- [ ] **T017** Compute core metrics (revenue on `net_sales`, orders, quantity, AOV, discount, profit, margin, return rate, cancellation rate, avg rating) + cross-check vs. `dataset_statistics.csv`
-- [ ] **T018** Revenue by category (via `order_items` + `products` — not `orders` alone)
-- [ ] **T019** Revenue by region (orders' own `region` column — no merge needed)
-- [ ] **T020** Revenue by marketing channel
-- [ ] **T021** Revenue by time (monthly/yearly trend)
-- [ ] **T022** Plots: monthly trend, category/region/channel bar charts
-- [ ] **T023** Top 10 products by revenue & units
-- [ ] **T024** Top 10 customers by revenue
-- [ ] **T025** Return-rate and rating breakdown by category (feeds ML + RAG docs later)
-- [ ] **T026** Write 5+ business insights (markdown, referencing the real computed numbers)
-- [ ] **T027** Execute notebook end-to-end (headless), confirm zero errors
-- [ ] **T028** Commit EDA notebook
+- [x] **T012** Load the 4 source CSVs in the notebook, print shapes
+- [x] **T013** Profile each table: dtypes, missing-value counts/%, duplicate rows
+- [x] **T014** Document missingness reasoning as markdown (structural nulls, not bugs)
+- [x] **T015** Parse date fields; derive year/month/year-month; print date range
+- [x] **T016** Outlier/suspicious-value checks (profit-margin extremes, negative delivery days, order_status vs. return_status consistency, `dataset_statistics.csv` "Total Products Used" mislabel)
+- [x] **T017** Compute core metrics (revenue on `net_sales`, orders, quantity, AOV, discount, profit, margin, return rate, cancellation rate, avg rating) + cross-check vs. `dataset_statistics.csv`
+- [x] **T018** Revenue by category (via `order_items` + `products` — not `orders` alone)
+- [x] **T019** Revenue by region (orders' own `region` column — no merge needed)
+- [x] **T020** Revenue by marketing channel
+- [x] **T021** Revenue by time (monthly/yearly trend)
+- [x] **T022** Plots: monthly trend, category/region/channel bar charts
+- [x] **T023** Top 10 products by revenue & units
+- [x] **T024** Top 10 customers by revenue
+- [x] **T025** Return-rate and rating breakdown by category (feeds ML + RAG docs later)
+- [x] **T026** Write 5+ business insights (markdown, referencing the real computed numbers)
+- [x] **T027** Execute notebook end-to-end (headless), confirm zero errors
+- [x] **T028** Commit EDA notebook
 
 ## Phase 3 — Task 2: Postgres schema + data load
 
