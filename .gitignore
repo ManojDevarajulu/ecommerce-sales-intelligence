@@ -1,0 +1,28 @@
+# Env / secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data (large / downloaded from Kaggle, not committed)
+# NOTE: data/*.csv only matches files directly in data/, NOT nested ones —
+# this bit us once already (see INTERVIEW_PREP.md). Use ** to match nested paths.
+data/**/*.csv
+data/**/*.zip
+
+# ML artifacts (kept, but not intermediate junk)
+ml/*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
