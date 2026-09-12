@@ -26,3 +26,9 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Internal candidate assessment docs (kept locally, ignored from repo)
+INTERVIEW_PREP.md
+RULES.md
+SCOPE.md
+TASKS.md
