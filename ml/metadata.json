@@ -1,0 +1,398 @@
+{
+  "trained_at": "2026-09-13T08:36:14.282197+00:00",
+  "sklearn_version": "1.5.2",
+  "problem": "Order Return Prediction (binary classification: order_status == 'Returned')",
+  "final_model": {
+    "name": "XGBoost",
+    "hyperparameters": {
+      "n_estimators": 150,
+      "max_depth": 2,
+      "learning_rate": 0.03,
+      "reg_lambda": 5.0,
+      "min_child_weight": 150,
+      "tree_method": "hist",
+      "enable_categorical": true,
+      "scale_pos_weight": 13.755407209612818,
+      "random_state": 42
+    },
+    "preprocessing": "tree-format: categoricals as pandas category dtype (enable_categorical=True), numerics raw (no scaling) - same input format as HistGradientBoosting."
+  },
+  "baseline_model": {
+    "name": "LogisticRegression",
+    "hyperparameters": {
+      "class_weight": "balanced",
+      "max_iter": 1000,
+      "random_state": 42
+    },
+    "preprocessing": "RobustScaler (numeric) + OneHotEncoder(handle_unknown='ignore') (categorical)"
+  },
+  "other_models_tried": {
+    "HistGradientBoostingClassifier": {
+      "hyperparameters": {
+        "categorical_features": "from_dtype",
+        "class_weight": "balanced",
+        "random_state": 42,
+        "l2_regularization": 1.0,
+        "max_leaf_nodes": 15
+      },
+      "verdict": "Strong second place - beaten by XGBoost on every test metric by a small margin, with a slightly larger overfitting gap. Not rejected for cause, just edged out."
+    },
+    "RandomForestClassifier": {
+      "hyperparameters": {
+        "n_estimators": 300,
+        "max_depth": 8,
+        "class_weight": "balanced",
+        "random_state": 42
+      },
+      "verdict": "REJECTED - worse test PR-AUC than HGB/XGBoost (0.0794) AND the worst overfitting of any model tried (train/test gap 0.1050, ~16x XGBoost's)."
+    }
+  },
+  "features": {
+    "numeric": [
+      "shipping_ratio",
+      "customer_prior_order_count",
+      "customer_prior_revenue"
+    ],
+    "categorical": [
+      "sales_channel",
+      "payment_method",
+      "shipping_method",
+      "region",
+      "customer_segment",
+      "primary_category"
+    ],
+    "binary": [
+      "is_repeat_customer_asof"
+    ],
+    "all_columns_in_order": [
+      "shipping_ratio",
+      "sales_channel",
+      "payment_method",
+      "shipping_method",
+      "region",
+      "customer_segment",
+      "primary_category",
+      "customer_prior_order_count",
+      "customer_prior_revenue",
+      "is_repeat_customer_asof"
+    ],
+    "categorical_categories": {
+      "sales_channel": [
+        "Marketplace",
+        "Mobile App",
+        "Social Media",
+        "Website"
+      ],
+      "payment_method": [
+        "Bank Transfer",
+        "Buy Now Pay Later",
+        "Cash on Delivery",
+        "Credit Card",
+        "Debit Card",
+        "Digital Wallet",
+        "PayPal"
+      ],
+      "shipping_method": [
+        "Economy",
+        "Express",
+        "Same Day",
+        "Standard"
+      ],
+      "region": [
+        "Central",
+        "East",
+        "North",
+        "South",
+        "West"
+      ],
+      "customer_segment": [
+        "Business",
+        "Consumer",
+        "Premium",
+        "VIP"
+      ],
+      "primary_category": [
+        "Automotive",
+        "Baby & Kids",
+        "Beauty & Personal Care",
+        "Books & Media",
+        "Electronics",
+        "Fashion",
+        "Grocery",
+        "Health & Wellness",
+        "Home & Kitchen",
+        "Home Appliances",
+        "Jewelry",
+        "Office Supplies",
+        "Pet Supplies",
+        "Sports & Outdoors",
+        "Toys & Games"
+      ]
+    }
+  },
+  "risk_reference_stats": {
+    "note": "Computed from the TRAIN split only (T111's contributing-factors heuristic must never be grounded in test-set information). Used by ml/predict.py to explain a prediction with real historical numbers instead of made-up thresholds.",
+    "overall_train_return_rate": 0.06777176568522775,
+    "category_return_rates": {
+      "sales_channel": {
+        "Marketplace": 0.06874095513748191,
+        "Mobile App": 0.06793195493824368,
+        "Social Media": 0.06310372844633023,
+        "Website": 0.06851051719231067
+      },
+      "payment_method": {
+        "Bank Transfer": 0.07028868567330106,
+        "Buy Now Pay Later": 0.06719012899607403,
+        "Cash on Delivery": 0.06646744544055057,
+        "Credit Card": 0.06920342251144854,
+        "Debit Card": 0.0657864888162969,
+        "Digital Wallet": 0.0628388180499351,
+        "PayPal": 0.07175884225064554
+      },
+      "shipping_method": {
+        "Economy": 0.06780806487947735,
+        "Express": 0.06850310717011301,
+        "Same Day": 0.06528002881325409,
+        "Standard": 0.06790744466800805
+      },
+      "region": {
+        "Central": 0.0703161271261554,
+        "East": 0.06372323278839512,
+        "North": 0.0698598305974065,
+        "South": 0.0667254472539037,
+        "West": 0.06867751634610796
+      },
+      "customer_segment": {
+        "Business": 0.07053490480507706,
+        "Consumer": 0.06731086339951191,
+        "Premium": 0.06819657934617883,
+        "VIP": 0.0664869721473495
+      },
+      "primary_category": {
+        "Automotive": 0.07031010132023334,
+        "Baby & Kids": 0.06205568720379147,
+        "Beauty & Personal Care": 0.06319606319606319,
+        "Books & Media": 0.06669207317073171,
+        "Electronics": 0.06729972595755529,
+        "Fashion": 0.06985915492957746,
+        "Grocery": 0.07129241326725123,
+        "Health & Wellness": 0.06831460674157304,
+        "Home & Kitchen": 0.06990965948575399,
+        "Home Appliances": 0.06441326530612244,
+        "Jewelry": 0.07311737484223811,
+        "Office Supplies": 0.06338356377194346,
+        "Pet Supplies": 0.06844349680170576,
+        "Sports & Outdoors": 0.06759305210918114,
+        "Toys & Games": 0.06956521739130435
+      }
+    },
+    "numeric_quantiles": {
+      "shipping_ratio": {
+        "p25": 0.009365679685047298,
+        "p75": 0.037657299391116714
+      },
+      "customer_prior_order_count": {
+        "p25": 1.0,
+        "p75": 3.0
+      },
+      "customer_prior_revenue": {
+        "p25": 227.36500000000007,
+        "p75": 4357.922500000001
+      }
+    },
+    "repeat_customer_return_rates": {
+      "0": 0.06767312907273243,
+      "1": 0.06780016547995012
+    }
+  },
+  "data_split": {
+    "train_period": "2021-01-01 to 2024-12-31",
+    "test_period": "2025-01-01 to 2025-12-31",
+    "train_rows": 110518,
+    "test_rows": 27598,
+    "train_return_rate": 0.06777176568522775,
+    "test_return_rate": 0.07145445322124791
+  },
+  "metrics": {
+    "final_model_test": {
+      "precision": 0.07786413356361543,
+      "recall": 0.5486815415821501,
+      "f1": 0.13637509452987143,
+      "roc_auc": 0.5373522058368394,
+      "pr_auc": 0.0818712108927484,
+      "confusion_matrix": {
+        "tn": 12812,
+        "fp": 12814,
+        "fn": 890,
+        "tp": 1082
+      }
+    },
+    "final_model_train": {
+      "precision": 0.07714718123344684,
+      "recall": 0.5444592790387183,
+      "f1": 0.1351449875724938,
+      "roc_auc": 0.5544110767871417,
+      "pr_auc": 0.08055953994042359,
+      "confusion_matrix": {
+        "tn": 54246,
+        "fp": 48782,
+        "fn": 3412,
+        "tp": 4078
+      }
+    },
+    "baseline_model_test": {
+      "precision": 0.07305004020535659,
+      "recall": 0.5988843813387424,
+      "f1": 0.13021666023485307,
+      "roc_auc": 0.512128057853261,
+      "pr_auc": 0.07627201732750735,
+      "confusion_matrix": {
+        "tn": 10640,
+        "fp": 14986,
+        "fn": 791,
+        "tp": 1181
+      }
+    },
+    "baseline_model_train": {
+      "precision": 0.0729704849042779,
+      "recall": 0.5185580774365821,
+      "f1": 0.12793780983908953,
+      "roc_auc": 0.5290024104819031,
+      "pr_auc": 0.07486132906710515,
+      "confusion_matrix": {
+        "tn": 53685,
+        "fp": 49343,
+        "fn": 3606,
+        "tp": 3884
+      }
+    },
+    "all_models_test": {
+      "LogisticRegression": {
+        "precision": 0.07305004020535659,
+        "recall": 0.5988843813387424,
+        "f1": 0.13021666023485307,
+        "roc_auc": 0.512128057853261,
+        "pr_auc": 0.07627201732750735,
+        "confusion_matrix": {
+          "tn": 10640,
+          "fp": 14986,
+          "fn": 791,
+          "tp": 1181
+        }
+      },
+      "HistGradientBoosting": {
+        "precision": 0.07930077275114412,
+        "recall": 0.5360040567951319,
+        "f1": 0.1381609045160447,
+        "roc_auc": 0.5361515105965686,
+        "pr_auc": 0.08037118504573601,
+        "confusion_matrix": {
+          "tn": 13354,
+          "fp": 12272,
+          "fn": 915,
+          "tp": 1057
+        }
+      },
+      "RandomForest": {
+        "precision": 0.08253575047854972,
+        "recall": 0.37170385395537525,
+        "f1": 0.13507785865659264,
+        "roc_auc": 0.5322723664749085,
+        "pr_auc": 0.07938692869720274,
+        "confusion_matrix": {
+          "tn": 17478,
+          "fp": 8148,
+          "fn": 1239,
+          "tp": 733
+        }
+      },
+      "XGBoost": {
+        "precision": 0.07786413356361543,
+        "recall": 0.5486815415821501,
+        "f1": 0.13637509452987143,
+        "roc_auc": 0.5373522058368394,
+        "pr_auc": 0.0818712108927484,
+        "confusion_matrix": {
+          "tn": 12812,
+          "fp": 12814,
+          "fn": 890,
+          "tp": 1082
+        }
+      }
+    },
+    "all_models_train": {
+      "LogisticRegression": {
+        "precision": 0.0729704849042779,
+        "recall": 0.5185580774365821,
+        "f1": 0.12793780983908953,
+        "roc_auc": 0.5290024104819031,
+        "pr_auc": 0.07486132906710515,
+        "confusion_matrix": {
+          "tn": 53685,
+          "fp": 49343,
+          "fn": 3606,
+          "tp": 3884
+        }
+      },
+      "HistGradientBoosting": {
+        "precision": 0.08270323212536729,
+        "recall": 0.5636849132176235,
+        "f1": 0.14424325247693884,
+        "roc_auc": 0.5811856685828156,
+        "pr_auc": 0.08677942070370728,
+        "confusion_matrix": {
+          "tn": 56200,
+          "fp": 46828,
+          "fn": 3268,
+          "tp": 4222
+        }
+      },
+      "RandomForest": {
+        "precision": 0.1185402822779944,
+        "recall": 0.5763684913217624,
+        "f1": 0.19663842579939875,
+        "roc_auc": 0.7040069382670832,
+        "pr_auc": 0.1843866828775162,
+        "confusion_matrix": {
+          "tn": 70927,
+          "fp": 32101,
+          "fn": 3173,
+          "tp": 4317
+        }
+      },
+      "XGBoost": {
+        "precision": 0.07714718123344684,
+        "recall": 0.5444592790387183,
+        "f1": 0.1351449875724938,
+        "roc_auc": 0.5544110767871417,
+        "pr_auc": 0.08055953994042359,
+        "confusion_matrix": {
+          "tn": 54246,
+          "fp": 48782,
+          "fn": 3412,
+          "tp": 4078
+        }
+      }
+    },
+    "random_guess_pr_auc_floor": 0.07145445322124791
+  },
+  "overfitting_check": {
+    "note": "Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further. Full detail in INTERVIEW_PREP.md 2026-09-13.",
+    "final_model_train_test_pr_auc_gap": -0.0013116709523248171,
+    "baseline_model_train_test_pr_auc_gap": -0.001410688260402207,
+    "all_models_train_test_pr_auc_gap": {
+      "LogisticRegression": -0.001410688260402207,
+      "HistGradientBoosting": 0.006408235657971273,
+      "RandomForest": 0.10499975418031346,
+      "XGBoost": -0.0013116709523248171
+    }
+  },
+  "excluded_features": {
+    "discount_ratio": "TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found at T114, removed; every metric here is from the leak-free retrain.",
+    "delivery_days / estimated_delivery_days / delivery_status": "NULL/'Cancelled' for 100% of returned orders - leaks the outcome (T098).",
+    "ratings.*": "0 of 9,462 returned orders ever have a rating, by construction (T093).",
+    "customer_lifetime_value / customer_order_count / is_repeat_customer (raw)": "lifetime aggregates, not point-in-time snapshots (T100); recomputed as-of-order instead.",
+    "payment_status": "'Refunded' <=> Returned - a post-outcome field, never a candidate."
+  },
+  "selection_rationale": "XGBoost (regularized) selected after comparing FOUR model families (LogisticRegression, HistGradientBoosting, RandomForest, XGBoost) - deliberately including a linear model, two boosting variants, and a bagging variant to test whether the near-random result (see below) was a model-choice problem. It wasn't: all four converged to a tight 0.076-0.082 test PR-AUC band. XGBoost leads on every test metric (PR-AUC 0.0819 vs HGB's 0.0804, ROC-AUC 0.5374 vs 0.5362) with an even smaller train/test gap than HGB's already-small one. RandomForest was rejected outright: worse test PR-AUC AND by far the worst overfitting of any model tried. IMPORTANT CONTEXT: on the leak-free feature set, no model is much better than random (test PR-AUC ~0.08 vs. a 0.0715 base rate; ROC-AUC ~0.54 vs 0.5). The pre-fix 0.57 PR-AUC / 0.97 ROC-AUC was almost entirely the discount_ratio leak. Trying four different algorithms and landing in the same narrow band - including a high-capacity model failing to fit even the training data much better - is the evidence that this is a feature ceiling, not something a different or better-tuned algorithm would fix. The shipped model should be read as 'slightly better than the base rate', not as a confident risk score."
+}

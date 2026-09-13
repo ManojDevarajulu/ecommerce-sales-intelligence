@@ -17,6 +17,10 @@ numpy==1.26.4
 # --- Machine learning ---
 scikit-learn==1.5.2
 joblib==1.4.2
+xgboost==3.4.1  # added 2026-09-13: tried alongside HistGradientBoostingClassifier
+                # as a 3rd model family (Random Forest also tried, rejected -
+                # see ml/train.py T104/INTERVIEW_PREP.md); its regularized
+                # variant became the final model.
 
 # --- LLM / RAG ---
 httpx==0.27.2
