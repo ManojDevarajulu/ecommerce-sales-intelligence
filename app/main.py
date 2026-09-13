@@ -1,7 +1,11 @@
 """
-app/main.py — T082: FastAPI application entrypoint. Registers every router.
+app/main.py — T082: FastAPI application entrypoint. Registers every router,
+and serves the RAG assistant page (T149) at `/`.
 """
+from pathlib import Path
+
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 
 from app.api.ai import rag_router, router as ai_router
 from app.api.analytics import router as analytics_router
@@ -29,3 +33,14 @@ app.include_router(rag_router)
 def health() -> dict[str, str]:
     """Liveness probe, and the fastest possible Swagger sanity check."""
     return {"status": "ok"}
+
+
+_ASSISTANT_PAGE = Path(__file__).parent / "static" / "index.html"
+
+
+@app.get("/", include_in_schema=False)
+def assistant_page() -> FileResponse:
+    """T149: the RAG chat widget - one static HTML file, no build step, same
+    origin as the API so its `fetch("/ai/rag/query")` needs no CORS setup.
+    Hidden from Swagger: it's a page, not an endpoint."""
+    return FileResponse(_ASSISTANT_PAGE, media_type="text/html")

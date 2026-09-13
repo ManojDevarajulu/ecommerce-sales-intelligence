@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Business Analyst Assistant</title>
+<meta name="description" content="Ask questions about the company's 2021–2025 sales, products, customers, regions, ratings and marketing. Every answer cites the internal report it came from.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500&family=Instrument+Serif&display=swap" rel="stylesheet">
+<style>
+  /* One family, two weights, no accent color. Dark mode is an exact
+     inversion - the page is monochrome, so nothing else needs to change. */
+  :root {
+    --bg: #ffffff;
+    --ink: #000000;
+    --ink-2: #6f6f6f;
+    --line: #e8e8e8;
+    --bubble: #000000;
+    --bubble-ink: #ffffff;
+    /* One considered accent: fountain-pen ink-blue, not a SaaS hue. Used
+       only for citations, the source rule, and focus rings. */
+    --accent: #26344d;
+    --hover: #f5f5f5;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #000000;
+      --ink: #ffffff;
+      --ink-2: #9a9a9a;
+      --line: #262626;
+      --bubble: #ffffff;
+      --bubble-ink: #000000;
+      --accent: #7c93be;
+      --hover: #131313;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    /* A ~3% opacity noise texture - felt as quality, not seen as a
+       "feature". No image asset: an inline SVG filter. */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    color: var(--ink);
+    font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 640px;
+    margin: 0 auto;
+    min-height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 0 20px;
+  }
+
+  /* Top bar: a quiet, persistent wordmark + docs link. It stays small on
+     purpose - the real identity moment is the hero below. */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar .wordmark { font-size: 13px; font-weight: 500; color: var(--ink-2); }
+  .topbar a { font-size: 13px; color: var(--ink-2); text-decoration: underline; text-underline-offset: 3px; }
+  .topbar a:hover { color: var(--ink); }
+
+  /* Hero: the page's one typographic moment - a display serif, used once,
+     at scale, nowhere else on the page. Removed with the suggestions the
+     moment a conversation starts. */
+  .hero { display: flex; flex-direction: column; gap: 22px; padding: 40px 0 4px; }
+  .hero h1 {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-weight: 400;
+    font-size: clamp(30px, 6vw, 42px);
+    line-height: 1.15;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .hero .lede { margin: 0; color: var(--ink-2); font-size: 16px; max-width: 42ch; }
+
+  main {
+    flex: 1;
+    padding: 28px 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+  }
+
+  /* Empty state: the real sample questions, as an invitation to act. */
+  .suggestion-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  @media (min-width: 480px) {
+    .suggestion-grid { grid-template-columns: 1fr 1fr; }
+  }
+  .suggestion-grid button {
+    font: inherit;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 14px 16px;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color 150ms ease, border-color 150ms ease;
+  }
+  .suggestion-grid button:hover { background: var(--hover); border-color: var(--ink-2); }
+
+  /* Messages */
+  .turn { display: flex; flex-direction: column; gap: 12px; }
+  .turn[data-entered="1"] { animation: enter 220ms ease-out both; }
+  @keyframes enter { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  .question {
+    align-self: flex-end;
+    max-width: 82%;
+    background: var(--bubble);
+    color: var(--bubble-ink);
+    font-weight: 500;
+    padding: 10px 14px;
+    border-radius: 18px;
+    border-bottom-right-radius: 4px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .answer { max-width: 100%; }
+  .answer p { margin: 0 0 10px; }
+  .answer p:last-child { margin-bottom: 0; }
+  .answer sup {
+    font-size: 11px;
+    line-height: 0;
+    vertical-align: super;
+    color: var(--accent);
+    margin-left: 1px;
+  }
+  .answer.muted { color: var(--ink-2); }
+  .answer.verbatim {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    font-size: 14px;
+    border-left: 1px solid var(--line);
+    padding-left: 14px;
+  }
+
+  /* Sources: a thin ink-blue rule (the evidence-marker color), one line
+     each, score tabular on the right. */
+  .sources {
+    border-left: 1px solid var(--accent);
+    padding-left: 14px;
+    color: var(--ink-2);
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .source { display: grid; grid-template-columns: 1.5em 1fr auto; gap: 0 10px; align-items: baseline; }
+  .source > span:first-child { color: var(--accent); font-weight: 500; }
+  .source .title { color: var(--ink); }
+  .source .doc { color: var(--ink-2); }
+  .source .score { color: var(--ink-2); }
+  .note { color: var(--ink-2); font-size: 13px; }
+
+  /* Thinking: three dots, nothing else. */
+  .thinking { display: inline-flex; gap: 5px; padding: 6px 0; }
+  .thinking i {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--ink-2);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  .thinking i:nth-child(2) { animation-delay: .15s; }
+  .thinking i:nth-child(3) { animation-delay: .3s; }
+  @keyframes pulse { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* Composer */
+  footer {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg);
+    padding: 12px 0 20px;
+    border-top: 1px solid var(--line);
+  }
+  form { display: flex; gap: 10px; align-items: flex-end; }
+  textarea {
+    flex: 1;
+    font: inherit;
+    color: var(--ink);
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 10px 16px;
+    resize: none;
+    min-height: 44px;
+    max-height: 160px;
+    line-height: 1.4;
+  }
+  textarea::placeholder { color: var(--ink-2); }
+  textarea:focus { outline: none; border-color: var(--ink); }
+  button.send {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    border: 0;
+    background: var(--bubble);
+    color: var(--bubble-ink);
+    display: grid; place-items: center;
+    cursor: pointer;
+    flex: none;
+  }
+  button.send:disabled { opacity: .35; cursor: default; }
+  button.send svg { width: 18px; height: 18px; }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  textarea:focus-visible { outline: none; }
+
+  @media (max-width: 520px) {
+    .question { max-width: 92%; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .turn[data-entered="1"] { animation: none; }
+    .thinking i { animation: none; opacity: .6; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <span class="wordmark">Business Analyst Assistant</span>
+    <a href="/docs">API docs</a>
+  </div>
+
+  <main id="conversation" aria-live="polite">
+    <section class="hero" id="suggestions">
+      <h1>Business Analyst Assistant</h1>
+      <p class="lede">Answers from 6 internal reports, 2021–2025. Ask about sales, products, customers, regions, ratings or marketing.</p>
+      <div class="suggestion-grid">
+        <button type="button">Which category has the highest return rate?</button>
+        <button type="button">What are the major patterns in customer ratings?</button>
+        <button type="button">Which regions or categories are performing strongly?</button>
+        <button type="button">What customer segments should the business target?</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <form id="composer">
+      <textarea id="input" rows="1" maxlength="500" placeholder="Ask about sales, products, customers or regions" aria-label="Your question" required></textarea>
+      <button class="send" type="submit" id="send" aria-label="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 19V5M5 12l7-7 7 7"/>
+        </svg>
+      </button>
+    </form>
+  </footer>
+</div>
+
+<script>
+  // Talks to POST /ai/rag/query (same origin - FastAPI serves this page at /).
+  const conversation = document.getElementById("conversation");
+  const suggestions = document.getElementById("suggestions");
+  const form = document.getElementById("composer");
+  const input = document.getElementById("input");
+  const send = document.getElementById("send");
+
+  const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+  // The model cites as [1], [2][3]; render those as superscripts and keep
+  // paragraph breaks. Everything else is plain text (escaped first).
+  function renderAnswer(text) {
+    return escapeHtml(text)
+      .split(/\n{2,}/)
+      .map((para) => "<p>" + para.replace(/\n/g, "<br>").replace(/\[(\d+)\]/g, "<sup>$1</sup>") + "</p>")
+      .join("");
+  }
+
+  function el(tag, className, html) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (html !== undefined) node.innerHTML = html;
+    return node;
+  }
+
+  function addTurn(question) {
+    const turn = el("div", "turn");
+    turn.dataset.entered = "1";
+    const q = el("div", "question");
+    q.textContent = question;
+    turn.appendChild(q);
+    const thinking = el("div", "thinking", "<i></i><i></i><i></i>");
+    thinking.setAttribute("aria-label", "Thinking");
+    turn.appendChild(thinking);
+    conversation.appendChild(turn);
+    turn.scrollIntoView({ block: "end", behavior: "smooth" });
+    return { turn, thinking };
+  }
+
+  function renderResponse(turn, data) {
+    const answer = el("div", "answer");
+    const by = data.meta.generated_by;
+
+    if (by === "guard") {
+      // The similarity guard fired: nothing relevant in the knowledge base.
+      answer.classList.add("muted");
+      answer.innerHTML = renderAnswer(data.answer);
+    } else if (!data.answered) {
+      // Retrieved something, but the model judged it doesn't answer the question.
+      answer.classList.add("muted");
+      const body = data.answer.replace(/^\s*insufficient data\s*:?\s*/i, "").trim();
+      answer.innerHTML = renderAnswer("The reports don't cover this. " + body);
+    } else if (by === "extractive_fallback") {
+      // Language model unavailable: the matching section, verbatim.
+      answer.classList.add("verbatim");
+      answer.textContent = data.answer;
+    } else {
+      answer.innerHTML = renderAnswer(data.answer);
+    }
+    turn.appendChild(answer);
+
+    if (data.sources.length) {
+      const sources = el("div", "sources");
+      for (const s of data.sources) {
+        const row = el("div", "source");
+        row.innerHTML =
+          `<span>${s.n}</span>` +
+          `<span><span class="title">${escapeHtml(s.section_title)}</span> <span class="doc">${escapeHtml(s.doc_title.split(" — ")[0])}</span></span>` +
+          `<span class="score">${s.similarity.toFixed(2)}</span>`;
+        sources.appendChild(row);
+      }
+      turn.appendChild(sources);
+    }
+
+    if (by === "openrouter") {
+      turn.appendChild(el("div", "note", "Answered by " + escapeHtml(data.meta.model)));
+    }
+  }
+
+  function renderFailure(turn, message) {
+    const answer = el("div", "answer muted");
+    answer.textContent = message;
+    turn.appendChild(answer);
+  }
+
+  async function ask(question) {
+    question = question.trim();
+    if (!question || send.disabled) return;
+    suggestions.remove();
+    input.value = "";
+    autosize();
+    send.disabled = true;
+
+    const { turn, thinking } = addTurn(question);
+    try {
+      const res = await fetch("/ai/rag/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      thinking.remove();
+      if (res.ok) {
+        renderResponse(turn, await res.json());
+      } else if (res.status === 503) {
+        renderFailure(turn, "The embedding service isn't reachable, so the question can't be searched. Start it and try again.");
+      } else {
+        const detail = await res.text();
+        renderFailure(turn, `The assistant returned an error (${res.status}). ${detail.slice(0, 200)}`);
+      }
+    } catch (err) {
+      thinking.remove();
+      renderFailure(turn, "Couldn't reach the assistant. Check the API is running, then try again.");
+    } finally {
+      send.disabled = false;
+      turn.scrollIntoView({ block: "end", behavior: "smooth" });
+      input.focus();
+    }
+  }
+
+  function autosize() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 160) + "px";
+  }
+
+  form.addEventListener("submit", (e) => { e.preventDefault(); ask(input.value); });
+  input.addEventListener("input", autosize);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(input.value); }
+  });
+  suggestions.addEventListener("click", (e) => {
+    if (e.target.tagName === "BUTTON") ask(e.target.textContent);
+  });
+  input.focus();
+</script>
+</body>
+</html>
