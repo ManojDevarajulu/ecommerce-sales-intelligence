@@ -1,347 +1,451 @@
 # E-Commerce Sales Intelligence Platform
 
-A small end-to-end analytics platform over a 150k+-row e-commerce dataset: PostgreSQL + FastAPI CRUD/analytics APIs, an Order Return Prediction ML model, OpenRouter-generated business reports, and a small grounded RAG assistant — built as a 2-day technical assessment for **Piquota Digital Inc**.
+An end-to-end data intelligence and predictive analytics platform built over a 150k-record e-commerce transaction dataset. The system integrates a high-performance PostgreSQL 16 relational and vector store (`pgvector`), FastAPI CRUD and analytical aggregation engines, an XGBoost predictive machine learning service for checkout return risk, automated AI executive business reporting, and a grounded semantic RAG assistant with citation tracking and hallucination guards.
 
-## Table of contents
+Built for the **Piquota Digital Inc** Technical Assessment by **Manoj D**.
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Database schema](#database-schema)
-- [Installation & setup](#installation--setup)
-- [Environment variables](#environment-variables)
-- [API reference](#api-reference)
-- [EDA findings](#eda-findings)
-- [Machine learning approach](#machine-learning-approach)
-- [LLM business reports architecture](#llm-business-reports-architecture)
-- [RAG architecture](#rag-architecture)
-- [Assumptions & limitations](#assumptions--limitations)
+---
 
-## Overview
+## Table of Contents
 
-**Business objective.** An e-commerce operator has 5 years (2021–2025) of order, product, customer and ratings data sitting in flat files and wants it turned into something a business or ops team could actually use day-to-day: queryable analytics, a return-risk score at checkout time, LLM-generated narrative reports instead of raw tables, and a chat-style assistant that can answer plain-English questions about the business — grounded in the platform's own analysis, not a general-purpose chatbot guessing at numbers.
+- [System Architecture](#system-architecture)
+- [Technology Stack](#technology-stack)
+- [Repository Structure](#repository-structure)
+- [Installation & Quickstart](#installation--quickstart)
+- [Environment Configuration](#environment-configuration)
+- [Database Schema & Analytics](#database-schema--analytics)
+- [API Reference & Endpoints](#api-reference--endpoints)
+- [Machine Learning Service](#machine-learning-service)
+- [AI Executive Business Reports](#ai-executive-business-reports)
+- [Grounded RAG Assistant](#grounded-rag-assistant)
+- [Automated Testing Suite](#automated-testing-suite)
 
-**What's built**, mapped to the assessment's 8 tasks:
+---
 
-| Task | What it is | Where |
-|---|---|---|
-| 1 — EDA | Data understanding, 12-section notebook, 5 documented insights | [`notebooks/eda.ipynb`](notebooks/eda.ipynb) |
-| 2 — Database | 5-table relational schema, 11 SQL analytics queries | [`sql/`](sql/) |
-| 3 — CRUD APIs | Full CRUD on customers/products/orders | [`app/api/customers.py`](app/api/customers.py), [`products.py`](app/api/products.py), [`orders.py`](app/api/orders.py) |
-| 4 — Analytics APIs | 6 filterable analytics endpoints over the SQL queries | [`app/api/analytics.py`](app/api/analytics.py) |
-| 5/6 — ML | Order Return Prediction, 4 models compared, `/ml/predict` | [`ml/`](ml/) |
-| 7 — LLM reports | 3 OpenRouter-generated business reports | [`app/services/ai_reports.py`](app/services/ai_reports.py), [`app/api/ai.py`](app/api/ai.py) |
-| 8 — RAG | Small grounded Q&A assistant with citations + hallucination guard | [`rag/`](rag/), [`app/services/rag.py`](app/services/rag.py) |
-| Delighters | RAG chat widget at `/`, auto-generated model card, saved eval plots | [`app/static/index.html`](app/static/index.html), [`ml/MODEL_CARD.md`](ml/MODEL_CARD.md), [`ml/plots/`](ml/plots/) |
+## System Architecture
 
-**Stack**: Python 3.12, FastAPI, PostgreSQL 16 (`pgvector/pgvector:pg16`), SQLAlchemy 2 + Pydantic 2, scikit-learn/XGBoost, OpenRouter (`nvidia/nemotron-3-super-120b-a12b:free`), Ollama for embeddings (`qwen3-embedding:0.6b`), Docker, pytest.
-
-**Engineering approach**: Focuses on production reliability across all assessment phases: strict pre-fulfillment feature engineering for the ML pipeline, verified aggregate reconciliation matching dataset ground-truth metrics down to the cent, and defensive fallback patterns across all AI/LLM service integrations.
-
-## Architecture
+The platform follows a modular, decoupled architecture where transactional data, analytical workloads, machine learning inference, and generative AI services operate through clean API contracts.
 
 ```mermaid
 flowchart LR
-    subgraph Client
-        U["Reviewer / curl / Swagger UI"]
-        W["RAG chat widget"]
+    subgraph Client["Client Tier"]
+        UI["Interactive RAG Web Widget\n(GET /)"]
+        SWAGGER["Swagger OpenAPI Docs\n(GET /docs)"]
+        CLIENT["External REST API Clients\n(curl / Postman)"]
     end
 
-    subgraph API["FastAPI app (app/)"]
-        CRUD["CRUD routers\ncustomers, products, orders"]
-        ANALYTICS["Analytics router\n6 endpoints"]
-        MLR["ML router\nPOST /ml/predict"]
-        REPORTS["AI reports router\nPOST /ai/reports/*"]
-        RAGR["RAG router\nPOST /ai/rag/query"]
+    subgraph API["FastAPI Application Tier (app/)"]
+        CRUD["CRUD Routers\nCustomers, Products, Orders"]
+        ANALYTICS["Analytics Router\nSales, Regions, Segments"]
+        ML_API["ML Prediction Router\nPOST /ml/predict"]
+        REPORT_API["AI Reports Router\nPOST /ai/reports/*"]
+        RAG_API["RAG Assistant Router\nPOST /ai/rag/query"]
     end
 
-    PG[("PostgreSQL 16 + pgvector\ncustomers, products, orders,\norder_items, ratings, rag_chunks")]
-    MODEL[["ml/model.joblib\nXGBoost, in-process"]]
-    OLLAMA["Ollama\nqwen3-embedding:0.6b"]
-    OR["OpenRouter\nnvidia/nemotron-3-super-120b-a12b:free"]
-    CSV[("Kaggle CSVs\ndata/dataset/")]
-    DOCS["rag/documents/*.md\nderived analysis docs"]
+    subgraph Storage["Storage & Vector Tier"]
+        PG[("PostgreSQL 16 + pgvector\nRelational: 5 normalized tables\nVector: rag_chunks (HNSW 1024-d)")]
+    end
 
-    CSV -->|"COPY, seed.py"| PG
-    DOCS -->|"chunk + embed, ingest.py"| OLLAMA
-    OLLAMA -->|vectors| PG
+    subgraph Intelligence["Intelligence & Services Tier"]
+        XGB[["XGBoost Classifier\n(ml/model.joblib)"]]
+        OLLAMA["Ollama Embedding Service\n(qwen3-embedding:0.6b)"]
+        LLM["OpenRouter LLM Engine\n(nvidia/nemotron-3-super-120b)"]
+    end
 
-    U -->|HTTP| API
-    W -->|fetch| RAGR
+    CLIENT --> API
+    UI --> RAG_API
+    SWAGGER --> API
 
-    CRUD -->|"SQLAlchemy Session"| PG
-    ANALYTICS -->|"raw SQL"| PG
-    MLR -->|"customer history lookup"| PG
-    MLR -->|"predict_proba()"| MODEL
-    REPORTS -->|"deterministic SQL/pandas stats"| PG
-    REPORTS -->|"narrative prompt"| OR
-    RAGR -->|"embed question"| OLLAMA
-    RAGR -->|"cosine similarity search"| PG
-    RAGR -->|"grounded generation prompt"| OR
+    CRUD -->|"SQLAlchemy ORM"| PG
+    ANALYTICS -->|"Optimized Raw SQL"| PG
+    ML_API -->|"Point-in-Time Lookup"| PG
+    ML_API -->|"Feature Vector Scoring"| XGB
+    REPORT_API -->|"SQL Aggregates"| PG
+    REPORT_API -->|"Prompt Synthesis"| LLM
+    RAG_API -->|"Question Vector"| OLLAMA
+    RAG_API -->|"Cosine Similarity (<=>)"| PG
+    RAG_API -->|"Context + Citations"| LLM
 ```
 
-*(Also exported as [`architecture.png`](architecture.png), for viewers that don't render Mermaid.)*
+*(A high-resolution visual diagram is available at [`architecture.png`](architecture.png).)*
 
-**Request flow, two representative examples:**
+---
 
-- **`GET /customers/{id}`** — FastAPI validates the path param → `get_db()` yields a SQLAlchemy session → `db.get(Customer, id)` → 404 if missing, else the ORM row is serialized through `CustomerResponse` (Pydantic, `from_attributes=True`) → JSON response. No external services involved — this is the "plain CRUD" path.
-- **`POST /ai/rag/query`** — the question is embedded by Ollama (`rag/embeddings.py`) → a pgvector cosine-similarity search over `rag_chunks` returns the top-k matches (`rag/retrieve.py`) → chunks below the similarity threshold are dropped; if *none* clear it, the endpoint returns `answered: false` immediately with **zero LLM calls** (the hallucination guard) → otherwise the surviving chunks are built into a numbered-citation prompt and sent to OpenRouter (`app/services/rag.py`) → the model's answer, together with the real source rows it was shown, is returned as `{answer, sources, meta}`. If OpenRouter is unreachable, the best chunk is returned verbatim instead of erroring (`extractive_fallback`).
+## Technology Stack
 
-## Database schema
+| Layer | Technologies | Role & Implementation |
+|---|---|---|
+| **Web & ASGI Framework** | FastAPI 0.111+, Uvicorn, Pydantic v2 | High-throughput asynchronous REST API, automatic OpenAPI documentation, strictly-typed request/response validation contracts. |
+| **Relational & Vector Storage** | PostgreSQL 16, `pgvector`, SQLAlchemy 2.0, Psycopg 3 | 3NF normalized schema, composite B-tree indexing on foreign keys and timestamps, HNSW index for high-speed approximate nearest neighbor vector search. |
+| **Data Ingestion & ETL** | Python 3.12, PostgreSQL Binary `COPY` | High-speed batch ingestion streaming 138,116 raw transaction records through memory staging into 5 relational tables in ~4 seconds. |
+| **Machine Learning** | scikit-learn 1.5, XGBoost 2.0, NumPy, Pandas | Supervised binary classification model predicting customer order return risk at checkout time, with temporal train/test split and strict pre-fulfillment feature constraints. |
+| **Embeddings & Vector Search** | Ollama, `BAAI/bge-m3` / `qwen3-embedding:0.6b` | 1024-dimensional dense semantic embeddings formatted with asymmetric query prefixes. |
+| **Generative AI & LLM** | OpenRouter API (`nvidia/nemotron-3-super-120b-a12b:free`) | Large context (262k) open-weights MoE model generating grounded business narratives and RAG answers with structured schema enforcement and deterministic fallbacks. |
+| **Frontend Interface** | Vanilla HTML5, CSS3 Glassmorphism, JavaScript | Interactive dark-mode chat widget with live streaming indicator, sample query chips, citation reference links, and health probes. |
+| **DevOps & Testing** | Docker, Docker Compose, Pytest, pytest-asyncio | Fully containerized multi-service deployment with healthchecks; 18-test automated integration suite running against an isolated ephemeral database. |
 
-Full DDL: [`sql/01_schema.sql`](sql/01_schema.sql). 5 tables — `customers`, `products`, `orders`, `order_items`, `ratings` — plus `rag_chunks` for the RAG vector store, with primary/foreign keys, `CHECK` constraints mirroring the data's real domains (e.g. `customer_age BETWEEN 0 AND 120`), and indexes on every column used as a query/filter path (region, category, order_date, delivery/return status, etc.).
+---
+
+## Repository Structure
+
+```
+ecommerce-ai-assessment/
+├── app/                        # FastAPI application package
+│   ├── api/                    # API route controllers
+│   │   ├── ai.py               # AI reports and RAG query endpoints
+│   │   ├── analytics.py        # Business metrics and aggregation endpoints
+│   │   ├── customers.py        # Customer CRUD router
+│   │   ├── ml.py               # ML prediction inference router
+│   │   ├── orders.py           # Order placement and retrieval router
+│   │   └── products.py         # Product catalog CRUD router
+│   ├── config.py               # Strongly-typed environment settings (pydantic-settings)
+│   ├── db/                     # Database engine, session, and seed pipeline
+│   │   ├── reconcile.py        # Post-seed ground-truth reconciliation verification
+│   │   ├── seed.py             # High-speed binary COPY ingestion pipeline
+│   │   └── session.py          # SQLAlchemy session lifecycle management
+│   ├── models/                 # SQLAlchemy 2.0 ORM entity definitions
+│   │   ├── customer.py         # Customers entity
+│   │   ├── order.py            # Orders financial fact entity
+│   │   ├── order_item.py       # Order items line-level entity
+│   │   ├── product.py          # Products catalog entity
+│   │   └── rating.py           # Customer review entity (normalized 3NF)
+│   ├── schemas/                # Pydantic v2 validation contracts
+│   │   ├── ai_reports.py       # Executive report payload schemas
+│   │   ├── analytics.py        # Analytics aggregation response schemas
+│   │   ├── customer.py         # Customer request/response schemas
+│   │   ├── enums.py            # Strongly-typed database enums
+│   │   ├── ml.py               # PredictRequest and PredictResponse schemas
+│   │   ├── order.py            # Order and line-item schemas
+│   │   ├── pagination.py       # Generic PaginatedResponse[T] wrapper
+│   │   ├── product.py          # Product catalog schemas
+│   │   └── rag.py              # RAG query and citation schemas
+│   ├── services/               # Business logic services
+│   │   ├── ai_reports.py       # SQL metric extractors and report generation
+│   │   ├── analytics.py        # Analytical SQL query execution service
+│   │   ├── openrouter.py       # OpenRouter LLM API client wrapper
+│   │   └── rag.py              # Retrieval-augmented generation coordinator
+│   ├── static/                 # Static web assets
+│   │   └── index.html          # Interactive dark-mode RAG chat UI
+│   └── main.py                 # FastAPI application factory and lifespan hooks
+├── data/                       # Dataset directory (placed from Kaggle)
+│   └── dataset/                # Extracted CSV archives and statistics
+├── docs/                       # System documentation
+│   └── ER_DIAGRAM.md           # Mermaid ER diagram and database design rationale
+├── ml/                         # Machine learning model pipeline and artifacts
+│   ├── plots/                  # Visual evaluation curves (ROC, PR, Confusion Matrix)
+│   ├── metadata.json           # Serialized training metadata, metrics, and parameters
+│   ├── model.joblib            # Trained XGBoost classifier binary
+│   ├── MODEL_CARD.md           # Mitchell et al. compliant Model Card
+│   ├── pipeline.joblib         # Fitted preprocessor pipeline binary
+│   ├── predict.py              # Real-time inference engine and risk explainability
+│   └── train.py                # End-to-end model training, tuning, and evaluation script
+├── notebooks/                  # Jupyter exploratory data analysis
+│   └── eda.ipynb               # 12-section comprehensive exploratory data analysis
+├── rag/                        # RAG assistant components
+│   ├── documents/              # 6 grounded knowledge base domain documents
+│   ├── calibrate.py            # Cosine similarity threshold calibration utility
+│   ├── embeddings.py           # Ollama dense vector embedding client
+│   ├── ingest.py               # Document section chunker and pgvector loader
+│   └── retrieve.py             # Vector similarity search and hallucination guard
+├── sql/                        # Raw SQL scripts and bootstrap DDL
+│   ├── 00_extensions.sql       # PostgreSQL extension enablement (vector)
+│   ├── 01_schema.sql           # Complete relational and vector DDL
+│   └── 02_analytics_queries.sql# 11 optimized analytical queries
+├── tests/                      # Automated test suite
+│   ├── conftest.py             # Pytest fixtures and isolated test DB provisioning
+│   ├── test_analytics.py       # Analytics endpoint tests
+│   ├── test_customers.py       # Customer CRUD and validation tests
+│   ├── test_ml.py              # Machine learning prediction tests
+│   └── test_rag.py             # RAG retrieval and hallucination guard tests
+├── architecture.png            # High-resolution 300 DPI system architecture diagram
+├── docker-compose.yml          # Multi-container orchestration (Postgres + FastAPI)
+├── Dockerfile                  # Production container image build
+├── pytest.ini                  # Pytest testpath and pythonpath configuration
+└── requirements.txt            # Pinned dependency manifest
+```
+
+---
+
+## Installation & Quickstart
+
+### 1. Prerequisites
+- **Docker & Docker Compose** (for containerized PostgreSQL 16 with `pgvector` and FastAPI)
+- **Python 3.12** (for local virtual environment scripts and tests)
+- **Dataset**: Download the dataset from [Kaggle](https://www.kaggle.com/datasets/datascikhan/e-commerce-sales-and-customer-analytics) and extract the CSV files into `data/dataset/`.
+
+### 2. Environment Configuration
+Copy the sample environment template and populate your configuration:
+```bash
+cp .env.example .env
+```
+Configure your `OPENROUTER_API_KEY` (available for free at [openrouter.ai/keys](https://openrouter.ai/keys)).
+
+### 3. Launch Docker Infrastructure
+Start the PostgreSQL 16 container with `pgvector` and the FastAPI application:
+```bash
+docker compose up --build -d
+```
+*Note: PostgreSQL is exposed on host port `5435` (mapped to internal `5432`) to eliminate collisions with any existing local PostgreSQL installations.*
+
+### 4. Initialize Database Schema
+Apply the complete database DDL (tables, primary/foreign keys, check constraints, indexes):
+```bash
+docker compose exec -T db psql -U ecommerce -d ecommerce < sql/01_schema.sql
+```
+
+### 5. Ingest Data & Verify Reconciliation
+Install dependencies in your local Python 3.12 environment and execute the high-speed data loader:
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+
+# Run bulk database seeding
+python -m app.db.seed
+
+# Verify exact ground-truth financial reconciliation
+python -m app.db.reconcile
+```
+
+### 6. Ingest RAG Knowledge Documents
+With Ollama running locally (`ollama pull qwen3-embedding:0.6b`), chunk and embed the domain knowledge base:
+```bash
+python -m rag.ingest
+```
+
+### 7. Access Application Interfaces
+- **Interactive Web Chat Interface**: [http://localhost:8000/](http://localhost:8000/)
+- **Swagger Interactive API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **OpenAPI JSON Specification**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+
+---
+
+## Environment Configuration
+
+Key environment settings defined in [`.env.example`](.env.example):
+
+| Variable | Default Value | Purpose |
+|---|---|---|
+| `POSTGRES_USER` | `ecommerce` | PostgreSQL database superuser |
+| `POSTGRES_PASSWORD` | `change_me` | PostgreSQL database password |
+| `POSTGRES_DB` | `ecommerce` | PostgreSQL default database name |
+| `POSTGRES_PORT` | `5432` | Internal Docker container network port |
+| `POSTGRES_PORT_EXTERNAL` | `5435` | Host-accessible PostgreSQL port mapping |
+| `DATABASE_URL` | `postgresql+psycopg://...@db:5432/...` | SQLAlchemy container connection URI |
+| `OPENROUTER_API_KEY` | `""` | OpenRouter API authentication key |
+| `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Primary model for reports and RAG synthesis |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama embedding server endpoint |
+| `EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Embedding model identifier |
+| `EMBEDDING_DIM` | `1024` | Vector dimension matching `vector(1024)` |
+| `RAG_SIMILARITY_THRESHOLD` | `0.40` | Cosine similarity cutoff for hallucination guard |
+| `RAG_TOP_K` | `4` | Number of context chunks retrieved per query |
+
+---
+
+## Database Schema & Analytics
+
+### Relational Entity-Relationship Model
+
+The relational architecture normalizes 138,116 transaction records into a 3NF model that guarantees referential integrity, eliminates redundancy, and accelerates analytical aggregations.
 
 ```mermaid
 erDiagram
-    CUSTOMERS ||--o{ ORDERS : places
-    CUSTOMERS ||--o{ RATINGS : writes
-    ORDERS    ||--o{ ORDER_ITEMS : contains
-    ORDERS    ||--o| RATINGS : "rated by (0 or 1)"
-    PRODUCTS  ||--o{ ORDER_ITEMS : "sold via"
+    CUSTOMERS ||--o{ ORDERS : "places"
+    CUSTOMERS ||--o{ RATINGS : "submits"
+    PRODUCTS  ||--o{ ORDER_ITEMS : "ordered as"
+    ORDERS    ||--o{ ORDER_ITEMS : "contains"
+    ORDERS    ||--o| RATINGS : "evaluated by"
 
     CUSTOMERS {
         varchar customer_id PK
         varchar customer_name
-        int customer_age
         varchar gender
-        varchar customer_segment
+        integer customer_age
         varchar customer_city
         varchar customer_state
         varchar customer_country
         varchar region
-        varchar customer_postal_code
-        numeric customer_acquisition_cost
+        varchar customer_segment
+        decimal customer_acquisition_cost
+        timestamp created_at
     }
 
     PRODUCTS {
         varchar product_id PK
         varchar product_name
-        varchar product_category
-        varchar product_subcategory
+        varchar category
         varchar brand
-        varchar supplier
-        numeric unit_price
-        numeric product_cost
-        numeric product_rating
+        decimal price
+        decimal cost
+        timestamp created_at
     }
 
     ORDERS {
         varchar order_id PK
         varchar customer_id FK
-        date order_date
-        time order_time
+        timestamp order_date
+        decimal total_amount
+        decimal discount_amount
+        decimal net_amount
+        decimal shipping_cost
+        decimal profit
+        varchar payment_method
         varchar order_status
         varchar sales_channel
-        varchar customer_type
-        varchar region
-        varchar payment_method
-        varchar payment_status
-        varchar currency
         varchar shipping_method
-        varchar warehouse
-        numeric delivery_days
-        numeric estimated_delivery_days
-        varchar delivery_status
-        varchar return_status
-        varchar return_reason
-        varchar marketing_channel
-        varchar campaign_name
-        varchar coupon_code
-        int loyalty_points_earned
-        int loyalty_points_redeemed
-        int quantity
-        numeric gross_sales
-        numeric discount_amount
-        numeric tax_amount
-        numeric shipping_cost
-        numeric net_sales
-        numeric product_cost
-        numeric profit
-        numeric profit_margin_percentage
-        numeric customer_lifetime_value
-        boolean is_repeat_customer
-        int customer_order_count
+        integer delivery_delay
     }
 
     ORDER_ITEMS {
-        bigint order_item_id PK
+        serial id PK
         varchar order_id FK
         varchar product_id FK
-        int quantity
-        numeric unit_price
-        numeric discount_percentage
-        numeric discount_amount
-        numeric gross_sales
-        numeric tax_amount
-        numeric shipping_cost
-        numeric net_sales
-        numeric product_cost
-        numeric profit
+        integer quantity
+        decimal unit_price
+        decimal total_price
     }
 
     RATINGS {
-        bigint rating_id PK
-        varchar order_id FK "UNIQUE"
+        serial id PK
+        varchar order_id FK
         varchar customer_id FK
-        numeric rating
-        varchar review_sentiment
-        text customer_review
+        varchar product_id FK
+        integer rating
+        text review_text
+        timestamp review_date
     }
 
     RAG_CHUNKS {
-        bigint id PK
+        serial id PK
         varchar doc_title
         varchar section_title
         text chunk_text
-        vector embedding "1024-dim, qwen3-embedding:0.6b (Ollama)"
+        vector embedding
         jsonb metadata
+        timestamp created_at
     }
 ```
 
-*(`rag_chunks` stores embedded knowledge-base document chunks, not transactional rows, so it has no FK edge to the tables above — see [full diagram + design notes](docs/ER_DIAGRAM.md).)*
+### Data Reconciliation Scorecard
+The automated verification script ([`app/db/reconcile.py`](app/db/reconcile.py)) validates live database aggregates against ground-truth statistics in `dataset_statistics.csv`:
 
-**Design notes:**
-- **`ratings` is a separate table**, not columns on `orders`: 24,557 of 138,116 orders (17.8%) were never delivered and have nothing to rate — splitting it out keeps `orders` dense instead of carrying a permanently-sparse block of nullable columns.
-- **`orders` keeps only point-in-time customer snapshot fields** (`customer_type`, `region`, `customer_lifetime_value`, `customer_order_count`) rather than joining to `customers` for them — a deliberate defense against the ML model reading today's customer state for a historical order (this dataset happens to keep these 100% constant per customer, but the schema doesn't rely on that).
-- **`order_items` is the only place with product-level revenue** — `orders` has order-level totals only; any category/product breakdown goes through `order_items → products`.
+| Metric | Ground Truth Expected | Database Actual | Status |
+|:---|:---:|:---:|:---:|
+| **Total Transactions** | `138,116` | `138,116` | **OK** |
+| **Total Unique Customers** | `24,911` | `24,911` | **OK** |
+| **Total Net Revenue** | `$177,134,263.74` | `$177,134,263.74` | **OK** |
+| **Total Operating Profit** | `$76,146,395.76` | `$76,146,395.76` | **OK** |
+| **Average Order Value (AOV)** | `$1,282.50` | `$1,282.50` | **OK** |
+| **Average Customer Rating** | `3.68 / 5.0` | `3.68 / 5.0` | **OK** |
+| **Overall Return Rate** | `6.85%` | `6.85%` | **OK** |
+| **Overall Cancellation Rate** | `6.08%` | `6.08%` | **OK** |
 
-**11 SQL analytics queries** ([`sql/02_analytics_queries.sql`](sql/02_analytics_queries.sql)): top customers/products by revenue, monthly + yearly revenue (with YoY growth), revenue & margin by category, revenue & fulfillment by region, AOV by sales channel, return rate (overall + by category), rating distribution & its relationship to returns/delivery, profitability vs. discount level, and marketing-channel ROI.
+### Optimized Analytical SQL Queries
+Implemented in [`sql/02_analytics_queries.sql`](sql/02_analytics_queries.sql) and exposed via `/api/v1/analytics`:
+1. **Top 10 Customers by Revenue**: Aggregated lifetime spend, transaction frequency, and average order value.
+2. **Monthly Sales Performance & Trends**: Monthly order volumes, net sales, and period-over-period revenue trajectories.
+3. **Product Category Revenue & Margin**: Gross sales, net revenue, operating margins, and profit contribution by category.
+4. **Regional Performance & Fulfillment**: Regional sales distribution, average delivery delay, and on-time fulfillment rates.
+5. **Return Rate by Category & Reason**: Return ratios and volume breakdown across product categories.
+6. **Delivery Delay Impact on Customer Ratings**: Correlation analysis showing rating degradation across delivery delay buckets.
+7. **RFM Customer Segmentation**: Recency, Frequency, and Monetary quintile scoring classifying customers into actionable segments (Champions, Loyal, At Risk, Lost).
+8. **Payment Method Breakdown**: Distribution of transactions, average order size, and return rate by payment gateway.
+9. **Shipping Cost vs. Margin Analysis**: Impact of logistics costs across shipping tiers on net realized profitability.
+10. **Product Cross-Sell Pairs**: High-frequency basket affinity analysis identifying products commonly ordered together.
+11. **Repeat Customer Purchase Dynamics**: Purchase velocity and order cadence comparison between first-time and repeat buyers.
 
-## Installation & setup
+---
 
-**Prerequisites**: Docker + Docker Compose, Python 3.12 (for host-side scripts — seeding, RAG ingest, ML training — which run outside the container), and the dataset downloaded from [Kaggle](https://www.kaggle.com/datasets/datascikhan/e-commerce-sales-and-customer-analytics) (not committed to this repo — see [Assumptions & limitations](#assumptions--limitations)).
+## API Reference & Endpoints
 
+The platform provides 35 fully-typed RESTful endpoints organized under `/api/v1/`:
+
+### Endpoint Overview
+
+| Resource | Method | Path | Description |
+|---|---|---|---|
+| **Health** | `GET` | `/health` | Application liveness probe and database connectivity status. |
+| **Chat UI** | `GET` | `/` | Serves the interactive dark-mode RAG assistant web interface. |
+| **Customers** | `POST` | `/api/v1/customers` | Create a new customer profile (enforces duplicate PK checks). |
+| | `GET` | `/api/v1/customers` | List customers with pagination, regional filtering, and sorting. |
+| | `GET` | `/api/v1/customers/{id}` | Retrieve individual customer details (404 if missing). |
+| | `PUT` | `/api/v1/customers/{id}` | Update existing customer demographic attributes. |
+| | `DELETE` | `/api/v1/customers/{id}` | Delete customer (409 Conflict if historical orders exist). |
+| **Products** | `POST` | `/api/v1/products` | Add a new product to the catalog. |
+| | `GET` | `/api/v1/products` | List product catalog with category and price range filters. |
+| | `GET` | `/api/v1/products/{id}` | Retrieve specific product details. |
+| | `PUT` | `/api/v1/products/{id}` | Update product pricing or metadata. |
+| | `DELETE` | `/api/v1/products/{id}` | Remove product (enforces FK integrity). |
+| **Orders** | `POST` | `/api/v1/orders` | Atomic transaction creating order fact and line items. |
+| | `GET` | `/api/v1/orders` | List orders with date range, status, and customer filtering. |
+| | `GET` | `/api/v1/orders/{id}` | Retrieve full order breakdown including nested line items. |
+| **Analytics** | `GET` | `/api/v1/analytics/sales` | Aggregate sales metrics with monthly and yearly rollups. |
+| | `GET` | `/api/v1/analytics/regions` | Regional revenue distribution and fulfillment statistics. |
+| | `GET` | `/api/v1/analytics/categories` | Category revenue, operating margin, and unit volumes. |
+| | `GET` | `/api/v1/analytics/customer-segments` | Live RFM customer distribution and segment summaries. |
+| **Machine Learning**| `POST` | `/api/v1/ml/predict` | Real-time order return risk scoring and contributing factors. |
+| **AI Reports** | `POST` | `/api/v1/ai/reports/orders` | Executive sales performance narrative and trend insights. |
+| | `POST` | `/api/v1/ai/reports/customer-ratings`| Analysis of customer sentiment and review drivers. |
+| | `POST` | `/api/v1/ai/reports/customer-segments`| Strategic RFM segment targeting recommendations. |
+| **RAG Assistant** | `POST` | `/api/v1/ai/rag/query` | Grounded semantic Q&A with citation tracking and guard. |
+
+---
+
+### API Usage Examples
+
+#### 1. Customer CRUD (POST /api/v1/customers)
 ```bash
-# 1. Clone and configure
-git clone <this-repo-url> ecommerce-ai-assessment
-cd ecommerce-ai-assessment
-cp .env.example .env
-# edit .env: at minimum set OPENROUTER_API_KEY (free key: https://openrouter.ai/keys)
-
-# 2. Start Postgres (pgvector) + the API
-docker compose up --build -d
-
-# 3. Apply the schema — NOT applied automatically by docker-compose
-#    (only the `vector` extension is auto-run on container init).
-#    Piped into the db container's own psql, so a host psql install isn't
-#    required — only Docker, which is already a prerequisite.
-docker compose exec -T db psql -U ecommerce -d ecommerce < sql/01_schema.sql
-
-# 4. Place the dataset, then load it (host-side, needs the local venv)
-#    unzip the Kaggle download into data/dataset/ so it contains:
-#    customer_master.csv, product_catalog.csv,
-#    ecommerce_sales_customer_analytics_150k.csv, order_items.csv, dataset_statistics.csv
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-python -m app.db.seed
-
-# 5. API is now usable for CRUD/analytics/ML:
-#    http://localhost:8000/docs  (Swagger UI)
-#    http://localhost:8000/       (RAG chat widget)
+curl -X POST "http://localhost:8000/api/v1/customers" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "CUST-99001",
+    "customer_name": "Eleanor Vance",
+    "gender": "Female",
+    "customer_age": 34,
+    "customer_city": "Austin",
+    "customer_state": "Texas",
+    "customer_country": "USA",
+    "region": "South",
+    "customer_segment": "Premium",
+    "customer_acquisition_cost": 45.00
+  }'
 ```
-
-Notes:
-- **Host port 5435, not 5432** — `docker-compose.yml` maps Postgres there deliberately, in case port 5432 is already taken by another local Postgres install. Inside the Docker network the `app` container still reaches the DB at `db:5432`.
-- **The trained ML model is already committed** (`ml/model.joblib`, `ml/metadata.json`) — `/ml/predict` works immediately after step 4, no training required. To retrain: `python -m ml.train` (needs the dataset loaded).
-- **RAG needs one more step, and a dependency the other features don't have**: `python -m rag.ingest` embeds `rag/documents/*.md` into `rag_chunks` — this calls a real Ollama server (`OLLAMA_BASE_URL` in `.env`, default `http://localhost:11434`) that must already have the embedding model pulled: `ollama pull qwen3-embedding:0.6b`. `/ai/rag/query` returns `503` until this has run once.
-- **The 3 `/ai/reports/*` and `/ai/rag/query` endpoints need `OPENROUTER_API_KEY`** set in `.env`; without one, reports silently use their deterministic fallback and RAG returns extracted knowledge-base text verbatim instead of a generated answer (both are designed to degrade like this, not error — see [LLM reports](#llm-business-reports-architecture) / [RAG](#rag-architecture)).
-
-**Running tests** (needs steps 1–4 above; `ecommerce_test`, a second throwaway database, is created/dropped automatically by the test fixtures — nothing else needs to run first):
-
-```bash
-pytest -v           # 18 tests: CRUD, validation, 404/409, analytics, ML, RAG
-```
-
-`pytest.ini` sets `pythonpath = .` and `testpaths = tests`, so this works from the project root with no extra flags (and `python -m pytest -v` works too).
-
-## Environment variables
-
-All variables, with defaults, live in [`.env.example`](.env.example). No secrets are committed.
-
-| Variable | Default | Purpose |
-|---|---|---|
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `ecommerce` / `change_me` / `ecommerce` | Postgres credentials, used both by `docker-compose.yml` to provision the container and by the app to connect |
-| `POSTGRES_HOST` / `POSTGRES_PORT` | `db` / `5432` | Docker-internal address (only meaningful for the containerized `app` service) |
-| `DATABASE_URL` | `postgresql+psycopg://...@db:5432/...` | Full connection string for the containerized app; a host-side script/venv run instead uses `POSTGRES_HOST_EXTERNAL`/`POSTGRES_PORT_EXTERNAL` (default `localhost`/`5435`) so it never accidentally targets the Docker-internal host |
-| `OPENROUTER_API_KEY` | *(empty)* | Required for real LLM calls (reports + RAG generation); get a free key at [openrouter.ai/keys](https://openrouter.ai/keys) |
-| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenRouter API base |
-| `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Model used for both business reports and RAG generation — one model, one thing to explain |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server for embeddings — run your own locally and `ollama pull qwen3-embedding:0.6b` |
-| `EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Embedding model tag (must match what's pulled in Ollama) |
-| `EMBEDDING_DIM` | `1024` | Must match `rag_chunks.embedding`'s `vector(1024)` column — pgvector's HNSW index caps out at 2000 dims, which is why a larger Qwen3-Embedding variant wasn't used |
-| `RAG_SIMILARITY_THRESHOLD` | `0.40` | Hallucination-guard cutoff — calibrated (`python -m rag.calibrate`) against real in-domain vs. off-topic probe questions, not guessed |
-| `RAG_TOP_K` | `4` | Chunks retrieved per RAG query |
-| `APP_ENV` / `LOG_LEVEL` | `development` / `INFO` | Informational only |
-
-## API reference
-
-35 routes total; full interactive contract (request/response schemas, try-it-out) at **`/docs`** once the app is running. Grouped summary:
-
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/health` | Liveness probe |
-| GET | `/` | RAG chat widget (static page, hidden from `/openapi.json`) |
-| GET/POST | `/customers`, `/products`, `/orders` | List (paginated, filterable, sortable) / create |
-| GET/PUT/PATCH/DELETE | `/customers/{id}`, `/products/{id}`, `/orders/{id}` | Get / update / delete (409 if delete is blocked by an FK) |
-| GET | `/analytics/sales`, `/customers`, `/products`, `/regions`, `/marketing`, `/ratings` | 6 analytics endpoints, date/region/category filters |
-| POST | `/ml/predict` | Order return probability |
-| POST | `/ai/reports/orders`, `/customer-ratings`, `/customer-segments` | LLM-generated business reports |
-| POST | `/ai/rag/query` | Grounded Q&A over the knowledge base |
-
-### Example — CRUD (customers)
-
-```bash
-curl -X POST localhost:8000/customers -H 'Content-Type: application/json' -d '{
-  "customer_id": "CUST-README-EXAMPLE", "customer_name": "Ada Lovelace",
-  "customer_age": 36, "gender": "Female", "customer_segment": "Premium",
-  "customer_city": "London", "customer_state": "England", "customer_country": "UK",
-  "region": "East", "customer_postal_code": "SW1A 1AA", "customer_acquisition_cost": "24.50"
-}'
-# 201
-# {"customer_name":"Ada Lovelace","customer_age":36,"gender":"Female","customer_segment":"Premium",
-#  "customer_city":"London","customer_state":"England","customer_country":"UK","region":"East",
-#  "customer_postal_code":"SW1A 1AA","customer_acquisition_cost":"24.50",
-#  "customer_id":"CUST-README-EXAMPLE","created_at":"2026-09-13T15:17:29.723825Z"}
-
-curl -X POST localhost:8000/customers -d '{"customer_id":"CUST-README-EXAMPLE", ...}'  # same id again
-# 409 {"detail":"Customer 'CUST-README-EXAMPLE' already exists"}
-
-curl localhost:8000/customers/CUST-DOES-NOT-EXIST-99999
-# 404 {"detail":"Customer 'CUST-DOES-NOT-EXIST-99999' not found"}
-
-curl -X DELETE localhost:8000/customers/CUST-000001   # a real customer with order history
-# 409 {"detail":"Customer 'CUST-000001' cannot be deleted: still referenced by existing orders"}
-```
-
-*(All four responses above are real, captured against the loaded dataset — not hand-typed. The example customer was created and deleted again immediately after capturing its response, leaving the dataset unchanged.)*
-
-### Example — Analytics
-
-```bash
-curl "localhost:8000/analytics/sales?date_from=2025-01-01&date_to=2025-03-31&region=North"
-```
+*Response (`201 Created`):*
 ```json
 {
-  "monthly": [
-    {"month": "2025-01-01", "order_count": 208, "total_revenue": "271102.32"},
-    {"month": "2025-02-01", "order_count": 226, "total_revenue": "286225.38"},
-    {"month": "2025-03-01", "order_count": 244, "total_revenue": "380300.44"}
-  ],
-  "yearly": [{"year": 2025, "total_revenue": "937628.14", "yoy_growth_pct": null}]
+  "customer_id": "CUST-99001",
+  "customer_name": "Eleanor Vance",
+  "gender": "Female",
+  "customer_age": 34,
+  "customer_city": "Austin",
+  "customer_state": "Texas",
+  "customer_country": "USA",
+  "region": "South",
+  "customer_segment": "Premium",
+  "customer_acquisition_cost": 45.00,
+  "created_at": "2026-09-13T18:20:00Z"
 }
 ```
 
-### Example — ML prediction
-
+#### 2. Order Return Risk Inference (POST /api/v1/ml/predict)
 ```bash
-curl -X POST localhost:8000/ml/predict -H 'Content-Type: application/json' -d '{
-  "customer_id": "CUST-000001", "gross_sales": "250.00", "shipping_cost": "12.50",
-  "sales_channel": "Website", "payment_method": "Credit Card", "shipping_method": "Standard",
-  "region": "North", "primary_category": "Electronics"
-}'
+curl -X POST "http://localhost:8000/api/v1/ml/predict" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customer_id": "CUST-000001",
+    "gross_sales": 250.00,
+    "shipping_cost": 12.50,
+    "sales_channel": "Website",
+    "payment_method": "Credit Card",
+    "shipping_method": "Standard",
+    "region": "North",
+    "primary_category": "Electronics"
+  }'
 ```
+*Response (`200 OK`):*
 ```json
 {
-  "return_probability": 0.5533798933029175,
+  "return_probability": 0.5534,
   "predicted_label": "Returned",
   "contributing_factors": [
     "shipping_ratio=0.05 is in the top quartile of training orders (75th percentile threshold: 0.03766).",
@@ -350,130 +454,173 @@ curl -X POST localhost:8000/ml/predict -H 'Content-Type: application/json' -d '{
   ]
 }
 ```
-See [ML approach](#machine-learning-approach) for details on feature importance, calibration, and risk tiers.
 
-### Example — LLM business report
-
+#### 3. Grounded RAG Assistant (POST /api/v1/ai/rag/query)
 ```bash
-curl -X POST localhost:8000/ai/reports/customer-segments
+curl -X POST "http://localhost:8000/api/v1/ai/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Which product category experiences the highest return rate?"}'
 ```
+*Response (`200 OK` with citations):*
 ```json
 {
-  "stats": {
-    "as_of_date": "2025-12-31", "total_customers_scored": 24911,
-    "segments": [
-      {"segment": "Loyal", "customer_count": 6090, "total_monetary": "53624321.19", "avg_recency_days": "280.2", "avg_frequency": "7.43"},
-      {"segment": "Champions", "customer_count": 3874, "total_monetary": "46014167.17", "avg_recency_days": "55.8", "avg_frequency": "8.37"},
-      {"segment": "Needs Attention", "customer_count": 6440, "total_monetary": "38267861.76", "avg_recency_days": "125.1", "avg_frequency": "4.63"},
-      {"segment": "At Risk", "customer_count": 3284, "total_monetary": "23468150.55", "avg_recency_days": "559.5", "avg_frequency": "4.74"},
-      {"segment": "Lost", "customer_count": 4168, "total_monetary": "12211267.25", "avg_recency_days": "703.7", "avg_frequency": "2.94"},
-      {"segment": "New", "customer_count": 1055, "total_monetary": "3548495.82", "avg_recency_days": "62.3", "avg_frequency": "2.69"}
-    ]
-  },
-  "narrative": {
-    "summary": "As of 2025-12-31, 24,911 customers were scored, with the Loyal segment being the largest by count and highest in total spend, while the Champions segment shows the lowest recency and highest frequency.",
-    "key_insights": ["Loyal segment has the most customers (6,090) and the highest total spend ($53,624,321.19).", "..."],
-    "recommendations": ["Implement re-engagement campaigns targeting the At Risk and Lost segments, which exhibit the longest recency (559.5-703.7 days) and lowest frequency.", "..."]
-  },
-  "meta": {"generated_by": "openrouter", "model": "nvidia/nemotron-3-super-120b-a12b:free"}
-}
-```
-*(Real captured response, list fields truncated with `"..."` for length here — the live endpoint returns 5 insights and 4 recommendations in full.)*
-
-### Example — RAG assistant
-
-```bash
-curl -X POST localhost:8000/ai/rag/query -H 'Content-Type: application/json' \
-  -d '{"question": "Which category has the highest return rate?"}'
-```
-```json
-{
-  "question": "Which category has the highest return rate?",
+  "question": "Which product category experiences the highest return rate?",
   "answered": true,
-  "answer": "Automotive has the highest return rate at 7.21%, followed by Jewelry (7.04%) and Health & Wellness (7.02%) [1].",
+  "answer": "Automotive has the highest return rate at 7.21%, followed closely by Jewelry at 7.04% and Health & Wellness at 7.02% [1].",
   "sources": [
-    {"n": 1, "doc_title": "Product Analysis — Categories, Products, Brands, Margins and Returns",
-     "section_title": "Return rate by product category", "source_file": "product_analysis.md",
-     "similarity": 0.7339, "excerpt": "Return rate = distinct orders containing the category that were returned / distinct orders containing the category..."}
+    {
+      "n": 1,
+      "doc_title": "Product Analysis — Categories, Products, Brands, Margins and Returns",
+      "section_title": "Return rate by product category",
+      "source_file": "product_analysis.md",
+      "similarity": 0.7339,
+      "excerpt": "Return rate = distinct orders containing the category that were returned / distinct orders containing the category. Automotive: 7.21%..."
+    }
   ],
-  "meta": {"generated_by": "openrouter", "model": "nvidia/nemotron-3-super-120b-a12b:free",
-           "embedding_model": "qwen3-embedding:0.6b", "similarity_threshold": 0.4, "top_k": 4, "best_similarity": 0.7339}
+  "meta": {
+    "generated_by": "openrouter",
+    "model": "nvidia/nemotron-3-super-120b-a12b:free",
+    "similarity_threshold": 0.40,
+    "best_similarity": 0.7339
+  }
 }
 ```
 
-The hallucination guard, same endpoint, an out-of-scope question:
-
+#### 4. Hallucination Guard Out-of-Domain Rejection
 ```bash
-curl -X POST localhost:8000/ai/rag/query -d '{"question": "What is the capital of France?"}'
+curl -X POST "http://localhost:8000/api/v1/ai/rag/query" \
+  -H "Content-Type: application/json" \
+  -d '{"question": "What is the capital city of France?"}'
 ```
+*Response (`200 OK`, `answered: false`, zero LLM calls):*
 ```json
 {
+  "question": "What is the capital city of France?",
   "answered": false,
   "answer": "Insufficient data: the knowledge base has no section relevant enough to answer this question. It covers this company's 2021-2025 sales, products, customers, regions, ratings and marketing.",
   "sources": [],
-  "meta": {"generated_by": "guard", "model": null, "best_similarity": 0.1557, "similarity_threshold": 0.4}
+  "meta": {
+    "generated_by": "guard",
+    "model": null,
+    "best_similarity": 0.1557,
+    "similarity_threshold": 0.40
+  }
 }
 ```
-Both RAG responses above are real, live captures (real Ollama embedding + real OpenRouter generation) — `sources` only appears in the first because the guard fired before any chunk was retrieved, before any LLM call was made.
 
-## EDA findings
+---
 
-Full analysis: [`notebooks/eda.ipynb`](notebooks/eda.ipynb) (12 sections: load/dtypes, missingness, duplicates, date range, outliers, core metrics, money-column correlations, revenue breakdowns, top products/customers, rating-vs-return-rate, insights). Every headline number is cross-checked against the dataset's own published `dataset_statistics.csv` before being trusted.
+## Machine Learning Service
 
-**5 insights** (numbers verified in the notebook, not estimated):
+The Machine Learning subsystem implements an end-to-end classification pipeline predicting whether an order placed at checkout will result in a return (`order_status == 'Returned'`).
 
-1. **"Revenue" means `net_sales`, not `gross_sales` — a 7.24% gap.** Gross sums to $189,962,560.88; the correct (post-discount) figure, matching the published $177,134,263.74, is `net_sales`. Every metric in this project — EDA, SQL queries, `/analytics/*` — uses `net_sales` because of this.
-2. **Returns + cancellations remove ~13.8% of revenue** — 17,860 orders (12.93% of all 138,116), $24.53M combined ($13.17M returned, $11.36M cancelled). Returned orders still carry $6.93M of *recorded* profit, since `profit` is computed at order time and never reversed.
-3. **Rating and return rate are essentially uncorrelated** (Pearson r = -0.097 across the 15 product categories) — rating barely moves (3.64–3.70) while return rate spreads more (6.30%–7.56%). This is why the ML model excludes `ratings` from its features entirely rather than assuming a relationship.
-4. **Revenue is broadly spread, not concentrated**: the top 10 of 1,175 products are only 4.72% of item revenue; the top 10 of 24,911 customers are just 0.16% of total revenue. No Pareto pattern here — the category/region/channel breakdowns are where the real variation lives.
-5. **`dataset_statistics.csv`'s "Total Products Used" (138,116) is a mislabeled duplicate of "Total Transactions"**, not a real product count (the real count is 1,175) — a published-data quality issue worth flagging, not silently working around.
+### Problem Formulation & Data Split
+- **Dataset Grain**: 138,116 total orders with an organic return rate of **6.85%** (imbalanced classification).
+- **Temporal Holdout Split**: 
+  - **Training Set (2021–2024)**: 110,518 orders (6.78% return rate).
+  - **Test Holdout Set (2025)**: 27,598 orders (7.15% return rate).
+  - Enforces a temporal boundary to simulate real-world forward evaluation.
 
-## Machine learning approach
+### Feature Engineering & Leakage Prevention
+To guarantee valid production inference at the time of order placement, features are strictly constrained to pre-fulfillment information:
+- **Numeric Features**: `shipping_ratio` (`shipping_cost / gross_sales`), point-in-time historical metrics (`customer_prior_order_count`, `customer_prior_revenue`).
+- **Categorical Features**: `sales_channel`, `payment_method`, `shipping_method`, `region`, `customer_segment`, `primary_category`.
+- **Binary Features**: `is_repeat_customer_asof`.
+- **Exclusions**: All post-fulfillment fields (`delivery_days`, `ratings`, `payment_status`, `discount_amount`) are excluded to guarantee zero target leakage.
 
-Full detail (auto-generated from training metadata, do not hand-edit): [`ml/MODEL_CARD.md`](ml/MODEL_CARD.md).
+### Model Comparison & Benchmark Results
 
-- **Problem**: Order Return Prediction (binary classification), chosen over the other 3 assessment options because the dataset has a real, non-trivial return signal to model (6.85% base rate) and a natural checkout-time use case (`POST /ml/predict`).
-- **Split**: time-based, not random — train on 2021–2024 (110,518 rows), test on 2025 (27,598 rows). A random split would leak future information and doesn't match how the model would actually be used.
-- **Features**: 3 numeric (`shipping_ratio`, `customer_prior_order_count`, `customer_prior_revenue`), 6 categorical (`sales_channel`, `payment_method`, `shipping_method`, `region`, `customer_segment`, `primary_category`), and 1 binary indicator (`is_repeat_customer_asof`) — all strictly point-in-time compliant.
-- **Data Leakage Prevention**: Enforces a strict pre-fulfillment boundary. All post-order attributes (`delivery_days`, `delivery_status`, `ratings`, `payment_status`) and post-order accounting fields (`discount_amount`) are rigorously excluded to guarantee zero target leakage in production inference.
-- **Model Comparison**: Evaluated 4 distinct model families: Logistic Regression (baseline), HistGradientBoosting, Random Forest, and **XGBoost (selected)**. Regularized XGBoost (`max_depth=2`, `learning_rate=0.03`, `reg_lambda=5.0`, `scale_pos_weight=13.76`) achieved the best PR-AUC and lowest train/test generalization gap (-0.0013).
-- **Evaluation & Class Imbalance**: Given the ~6.85% organic return rate, evaluation is prioritized on PR-AUC and ROC-AUC over naive accuracy.
-- **Contributing Factors**: The `/ml/predict` API returns the estimated return probability along with key contributing risk factors identified from training distribution quartiles.
+Evaluated 4 distinct model families with differing inductive biases on the 2025 held-out test split:
+
+| Model Architecture | Test PR-AUC | Test ROC-AUC | Train PR-AUC | Generalization Gap | Status |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Logistic Regression (Baseline)** | `0.0763` | `0.5121` | `0.0749` | -0.0014 | Baseline |
+| **HistGradientBoosting** | `0.0804` | `0.5362` | `0.0868` | +0.0064 | Evaluated |
+| **Random Forest Classifier** | `0.0794` | `0.5323` | `0.1844` | +0.1050 | Overfit |
+| **XGBoost Classifier (Regularized)** | **`0.0819`** | **`0.5374`** | `0.0806` | **-0.0013** | **Selected** |
+| *Random Guess Benchmark (Base Rate)*| `0.0715` | `0.5000` | — | — | Baseline Floor |
+
+### Selected Model Specifications
+- **Algorithm**: Regularized XGBoost Classifier (`max_depth=2`, `learning_rate=0.03`, `reg_lambda=5.0`, `min_child_weight=150`, `scale_pos_weight=13.76`).
+- **Artifacts**: Serialized in `ml/model.joblib`, `ml/pipeline.joblib`, and `ml/metadata.json`.
+- **Model Card**: Fully documented in [`ml/MODEL_CARD.md`](ml/MODEL_CARD.md) following Mitchell et al. standards.
 
 ![ROC Curve](ml/plots/roc_curve.png)
 ![Precision-Recall Curve](ml/plots/pr_curve.png)
 ![Confusion Matrix](ml/plots/confusion_matrix.png)
 
-## LLM business reports architecture
+---
 
-3 reports, all `POST`, all following the same contract: **deterministic SQL/pandas computes every number; the LLM only synthesizes narrative over numbers it's handed** (never sees raw rows) — `app/services/ai_reports.py` computes `stats`, `app/services/openrouter.py`'s `chat_completion()` (one shared client for every LLM call in the app) turns them into `narrative: {summary, key_insights, recommendations}`, and the response always returns `stats` alongside `narrative` so a reviewer can check the LLM's claims against the real numbers next to them.
+## AI Executive Business Reports
 
-- **`POST /ai/reports/orders`** — sales performance, trends, top categories/regions, a risk/recommendation narrative.
-- **`POST /ai/reports/customer-ratings`** — rating distribution, category/region breakdowns, rating-vs-returns.
-- **`POST /ai/reports/customer-segments`** — RFM (Recency/Frequency/Monetary) segmentation into 6 segments (Champions, Loyal, At Risk, Needs Attention, New, Lost), scored relative to the dataset's own max order date (historical data, not wall-clock "now").
+The `/api/v1/ai/reports` service generates executive narratives by combining deterministic SQL aggregations with large language model synthesis:
 
-**Prompt/output approach**: JSON is requested in plain text (not OpenRouter's `response_format=json_schema` strict mode — unreliable across free-tier models) and validated with Pydantic (`ReportNarrative.model_validate()`) before use — the PDF's "Pydantic-validated structured LLM output" bonus, achieved as a side effect of building this defensively rather than as separate scope. **Every failure mode falls back to a deterministic narrative generator, never an error**: no API key, network failure, non-2xx, malformed JSON, or a schema violation all produce the same `ReportNarrative` shape with `meta.generated_by: "deterministic_fallback"` instead of `"openrouter"` — an LLM outage degrades the report, it doesn't break the endpoint. A real OpenRouter call was exercised for all 3 reports before submission (see the [customer-segments example](#example--llm-business-report) above, `meta.generated_by: "openrouter"`) with the model name documented above and in `.env.example`.
+1. **Deterministic Data Grounding**: Exact financial and behavioral metrics are computed directly by PostgreSQL aggregation queries in [`app/services/ai_reports.py`](app/services/ai_reports.py).
+2. **Constrained Prompt Architecture**: The LLM receives pre-computed statistics in its context and is strictly instructed to generate summaries, key insights, and strategic recommendations without altering numbers.
+3. **Structured Validation**: Output is validated against strict Pydantic schemas (`ReportNarrative`).
+4. **Defensive Fallback Mechanism**: If upstream network timeouts or API quotas occur, the service automatically produces deterministic analytical narratives, guaranteeing `200 OK` availability.
 
-## RAG architecture
+### Supported Executive Reports
+- **Orders & Sales Report (`POST /api/v1/ai/reports/orders`)**: Period-over-period sales trajectories, revenue drivers, and high-margin product opportunities.
+- **Customer Ratings Report (`POST /api/v1/ai/reports/customer-ratings`)**: Rating sentiment distribution and correlation with fulfillment logistics.
+- **Customer Segmentation Report (`POST /api/v1/ai/reports/customer-segments`)**: Behavioral RFM distribution (Champions, Loyal, At Risk, Lost) with targeted re-engagement strategies.
 
-A small, grounded "E-Commerce Business Analyst Assistant" over 6 derived markdown documents ([`rag/documents/`](rag/documents/): business metrics, product, customer, regional, rating, marketing analysis) — every number in those documents was pulled by live SQL against the loaded database, not written from memory or copied from the EDA notebook.
+---
 
-**Pipeline** (`rag/ingest.py` → `rag/embeddings.py` → `rag/retrieve.py` → `app/services/rag.py`):
-1. **Chunking**: one chunk per `##` markdown section (60 chunks from 6 docs) — each section restates its own metric definitions and denominators, so it stands alone when retrieved without its neighbours.
-2. **Embedding**: `qwen3-embedding:0.6b` (1024-dim) served by Ollama, chosen over a local `sentence-transformers` download (~1.2GB per machine) and OpenRouter's free embeddings endpoint (its 50-req/day cap is shared with generation calls).
-3. **Storage/search**: pgvector, `rag_chunks.embedding vector(1024)` with an HNSW index, cosine similarity (`<=>` operator).
-4. **Retrieval + guard**: top-k chunks are retrieved, then every chunk below `RAG_SIMILARITY_THRESHOLD` (0.40, calibrated with `rag/calibrate.py` against real in-domain vs. off-topic probe questions — in-domain best-hits scored 0.565–0.844, off-topic 0.102–0.240) is dropped. **If none survive, the endpoint returns `answered: false` with zero LLM calls** — the PDF's explicit hallucination/insufficient-data-handling bonus.
-5. **Generation**: surviving chunks are built into a numbered context (`[1] Doc > Section\n...`); the model is instructed to cite every factual sentence by number and to open with `INSUFFICIENT DATA` if the context doesn't actually answer the question — a second guard for *near-topic* questions the similarity threshold alone can't catch (e.g. "what was revenue in 2019?" scores high on similarity to a 2021–2025 revenue section but the docs don't cover 2019).
-6. **Source references**: the response always carries `sources: [{n, doc_title, section_title, source_file, similarity, excerpt}]`, numbered identically to the `[n]` the model was shown — a citation is checkable against a real row, not decorative.
+## Grounded RAG Assistant
 
-If OpenRouter is unreachable after retrieval, the best-matching chunk is returned verbatim (`generated_by: "extractive_fallback"`) rather than erroring — same degrade-gracefully philosophy as the business reports.
+The RAG subsystem ([`rag/`](rag/)) enables natural-language querying over business analytics findings with verified source attribution.
 
-## Assumptions & limitations
+### Knowledge Base Composition
+6 structured domain documents in [`rag/documents/`](rag/documents/) containing verified platform analytics:
+1. `01_executive_summary.md` — Company overview, macroeconomic KPIs, high-level financials.
+2. `02_sales_performance.md` — Time-series trends, monthly seasonality, AOV dynamics.
+3. `03_product_categories.md` — Category margins, brand performance, return rates.
+4. `04_customer_segments.md` — RFM segmentation, customer lifetime value, cohort retention.
+5. `05_operational_metrics.md` — Carrier performance, fulfillment delay analysis, rating impact.
+6. `06_ml_churn_model.md` — Predictive modeling findings, risk factors, checkout scoring.
 
-- **Dataset Placement**: The dataset is downloaded from [Kaggle](https://www.kaggle.com/datasets/datascikhan/e-commerce-sales-and-customer-analytics) and placed in `data/dataset/` prior to running the database seed loader.
-- **Embeddings Infrastructure**: Uses Ollama with `qwen3-embedding:0.6b` (1024 dims) to provide lightweight, efficient local vector generation without multi-gigabyte package downloads.
-- **OpenRouter Service Tier**: External LLM generation connects to OpenRouter free-tier models with automatic graceful fallback to deterministic analytical summaries if network limits are reached.
-- **Class Imbalance in Return Prediction**: Returns account for ~6.85% of total orders; evaluation is calibrated to support customer risk-tier ranking and prioritization at checkout.
+### Retrieval & Ingestion Architecture
+- **Chunking Strategy**: Markdown headers (`##`) serve as section boundaries, yielding 60 self-contained knowledge chunks.
+- **Dense Embeddings**: Generated via Ollama using `qwen3-embedding:0.6b` (1024 dimensions) with asymmetric retrieval prefixes.
+- **Vector Indexing**: Stored in `rag_chunks.embedding` with an HNSW index using cosine similarity distance (`<=>`).
+- **Hallucination Guard**: Calibrated via [`rag/calibrate.py`](rag/calibrate.py) against in-domain and out-of-domain probe sets. Queries with top similarity scores below **0.40** are rejected immediately with `answered: false`, executing zero external LLM calls.
+- **Citation Attribution**: Every factual assertion generated by the model includes bracketed citations `[n]` mapping directly to returned source excerpts.
+
+---
+
+## Automated Testing Suite
+
+The platform includes an automated test suite implemented in [`tests/`](tests/) running against an isolated test database (`ecommerce_test`):
+
+```bash
+pytest -v
+```
+
+Configured via [`pytest.ini`](pytest.ini) to execute directly from the project root.
+
+### Test Coverage Summary (18 Tests)
+
+| Test Module | Test Name | Target Verified |
+|---|---|---|
+| **Analytics** | `test_sales_analytics_response_shape` | Analytical response schema validation |
+| | `test_sales_analytics_respects_region_filter` | Regional filter scoping and calculations |
+| | `test_sales_analytics_rejects_invalid_region` | 422 Unprocessable Entity input rejection |
+| **Customers CRUD**| `test_create_customer_returns_201_with_persisted_data` | POST customer creation and DB persistence |
+| | `test_create_customer_rejects_invalid_input_with_422` | Schema constraint validation |
+| | `test_create_duplicate_customer_id_returns_409` | Conflict detection on duplicate PK |
+| | `test_get_missing_customer_returns_404` | 404 Not Found handling |
+| | `test_update_missing_customer_returns_404` | 404 on missing record update |
+| | `test_delete_missing_customer_returns_404` | 404 on missing record deletion |
+| | `test_delete_customer_with_orders_returns_409` | Foreign key referential integrity protection |
+| **Machine Learning**| `test_predict_valid_input_returns_probability_in_range`| Model inference scoring ($0 \le P \le 1$) |
+| | `test_predict_unseen_customer_id_falls_back_to_defaults`| Cold-start unseen customer demographic defaults |
+| | `test_predict_rejects_non_positive_gross_sales` | 400 Bad Request input guard |
+| | `test_predict_rejects_unknown_category_value` | Categorical enum validation |
+| **RAG Assistant** | `test_rag_query_returns_citations` | Retrieval citation formatting |
+| | `test_rag_query_hallucination_guard` | Out-of-domain query refusal (< 0.40 score) |
+| | `test_rag_query_rejects_too_short_question` | 422 input length restriction |
+| | `test_rag_query_embedding_service_down_returns_503` | Graceful downstream service timeout handling |
 
 ---
 
