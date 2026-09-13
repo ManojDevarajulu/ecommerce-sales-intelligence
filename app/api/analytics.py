@@ -1,16 +1,4 @@
-"""
-app/api/analytics.py — the six analytics endpoints.
-
-Each one wraps queries from `sql/02_analytics_queries.sql` (Q1-Q11) and
-adds optional date/region/category filtering on top, through
-`optional_where` in `app/services/analytics.py`.
-
-The SQL is intentionally kept close to the standalone query file rather
-than rewritten in the ORM: those queries were reconciled against the
-dataset's own published totals, and keeping the two in the same shape
-means a figure from the API can be checked against the figure from the
-SQL file without translating between two dialects.
-"""
+"""Business analytics and intelligence endpoints."""
 from datetime import date
 
 from fastapi import APIRouter, Depends, Query

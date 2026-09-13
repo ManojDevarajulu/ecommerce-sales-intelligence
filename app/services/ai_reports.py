@@ -1,20 +1,4 @@
-"""
-app/services/ai_reports.py — deterministic statistics for the three
-OpenRouter reports, plus each report's prompt template and its
-deterministic fallback narrative.
-
-The division of labour across the two service modules: everything here is
-report-specific (which numbers to compute, how to phrase them, what to say
-if the LLM is unavailable), while the generic call/parse/validate
-machinery lives in `app/services/openrouter.py`.
-
-Orders and ratings stats reuse the same raw-SQL-via-`run_query` pattern as
-`app/api/analytics.py` — they are the same kind of aggregate query, just
-consumed by an LLM prompt instead of returned to a caller. RFM is the
-exception: quintile scoring is a per-customer statistical computation that
-pandas expresses far more directly than hand-rolled SQL window functions,
-the same tool choice already made for comparable work in `ml/train.py`.
-"""
+"""Business intelligence statistics aggregation, prompts, and deterministic fallback generators."""
 from datetime import date
 
 import pandas as pd

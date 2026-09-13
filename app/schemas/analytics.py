@@ -1,13 +1,4 @@
-"""
-app/schemas/analytics.py — typed response models for the 6 analytics
-endpoints.
-
-Row shapes mirror `sql/02_analytics_queries.sql`'s columns exactly (same
-query, just executed through `app/services/analytics.py` with optional
-filters) — these models exist purely for self-documenting Swagger output
-and response-shape validation, not for request validation (there's no
-Create/Update side to an analytics result).
-"""
+"""Response schemas for business intelligence and analytics endpoints."""
 from datetime import date
 from decimal import Decimal
 

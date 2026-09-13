@@ -1,11 +1,4 @@
-"""
-app/api/products.py — CRUD router for the `products` resource.
-
-Same shape as the customers router: a duplicate `product_id` on create is
-caught by the primary key and returned as 409, and deleting a product that
-still appears in `order_items` is refused by Postgres (`ON DELETE
-RESTRICT`) and surfaced as 409 rather than a 500.
-"""
+"""CRUD endpoints for the product resource."""
 from typing import Literal
 
 import psycopg

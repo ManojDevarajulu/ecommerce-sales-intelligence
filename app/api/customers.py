@@ -1,12 +1,4 @@
-"""
-app/api/customers.py — CRUD router for the `customers` resource.
-
-Two status codes here are worth knowing about before reading the handlers:
-a duplicate `customer_id` on create returns 409 (only the database's own
-primary key can catch that), and deleting a customer who still has orders
-also returns 409 — that one is Postgres' `ON DELETE RESTRICT` rejecting the
-delete, not an application-level check.
-"""
+"""CRUD endpoints for the customer resource."""
 from typing import Literal
 
 import psycopg

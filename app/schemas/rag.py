@@ -1,11 +1,4 @@
-"""
-app/schemas/rag.py — request/response schemas for POST /ai/rag/query.
-
-The response always carries `sources` next to `answer` (same principle as
-the reports keeping `stats` next to `narrative`): every citation is a real
-`rag_chunks` row with its similarity score, so a reader can check the
-answer against the section it came from instead of taking it on trust.
-"""
+"""Request and response schemas for RAG retrieval and generation."""
 from pydantic import BaseModel, Field
 
 

@@ -1,12 +1,4 @@
-"""
-app/api/orders.py — CRUD router for the `orders` resource.
-
-The one place this router differs meaningfully from customers/products is
-what can go wrong at the database layer: an order references a customer,
-so a create can fail either because the order already exists (409) or
-because the customer it points at does not (422). Deletes, by contrast,
-have no conflict case at all — the child rows cascade.
-"""
+"""CRUD endpoints for the order resource."""
 from datetime import date
 from typing import Literal
 

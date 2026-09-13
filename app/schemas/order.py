@@ -1,15 +1,4 @@
-"""
-app/schemas/order.py — Pydantic schemas for the `orders` resource.
-
-Field set mirrors `app/models/order.py` / `sql/01_schema.sql` exactly (the
-same explicit 35-column set as `app/db/seed.py`'s `ORDERS_COLS` — the source
-CSV also carries customer-demographic and review columns that belong to
-`customers`/`ratings`, not `orders`). Constraints mirror the DB's CHECK
-constraints (`quantity > 0`); money fields otherwise stay unconstrained on
-sign where the data itself isn't always non-negative — `profit` is
-genuinely negative for ~0.94% of orders (heavily discounted line items), so
-it is deliberately NOT given `ge=0`.
-"""
+"""Pydantic schemas and validation models for order entities."""
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import Literal

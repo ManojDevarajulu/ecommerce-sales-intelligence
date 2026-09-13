@@ -1,13 +1,4 @@
-"""
-app/schemas/ai_reports.py — response schemas for the three OpenRouter
-business reports.
-
-`ReportNarrative` is the one piece of every report that actually comes from
-the LLM (or the deterministic fallback, which fills the identical shape)
-— every other field is computed by deterministic SQL/Python. Keeping `stats` alongside `narrative` in every
-response (not narrative alone) means the real numbers are sitting right
-next to the LLM's prose, so a mismatch is checkable, not just asserted.
-"""
+"""Response schemas for automated AI business intelligence reports."""
 from datetime import date
 from decimal import Decimal
 
@@ -15,8 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class ReportNarrative(BaseModel):
-    """What the LLM (or the deterministic fallback) produces — never the
-    numbers themselves, only synthesis over numbers already computed."""
+    """Executive narrative summary generated for business reports."""
 
     summary: str = Field(..., description="1-2 sentence executive summary")
     key_insights: list[str] = Field(..., description="3-5 bullet-point observations grounded in `stats`")

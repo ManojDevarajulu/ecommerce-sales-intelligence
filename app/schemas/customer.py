@@ -1,11 +1,4 @@
-"""
-app/schemas/customer.py — Pydantic schemas for the `customers` resource.
-
-Field constraints mirror `sql/01_schema.sql`'s CHECK constraints and column
-sizes exactly (`customer_age` 0-120, `customer_acquisition_cost`
-NUMERIC(10,2)) — the API rejects invalid input before it ever reaches
-Postgres, rather than relying on the DB to catch it.
-"""
+"""Pydantic schemas and validation models for customer entities."""
 from datetime import datetime
 from decimal import Decimal
 

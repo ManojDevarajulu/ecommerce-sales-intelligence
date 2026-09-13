@@ -1,29 +1,4 @@
-"""
-rag/ingest.py — knowledge-base ingest.
-
-    python -m rag.ingest            # chunk -> embed -> (re)load rag_chunks
-    python -m rag.ingest --dry-run  # chunk only, print what would be stored
-
-Pipeline: rag/documents/*.md -> one chunk per `##` section -> embeddings
-(rag/embeddings.py, Ollama) -> rag_chunks (pgvector).
-
-Chunking = one chunk per `##` section, no further splitting. The documents
-were written for exactly this: every section restates its own
-entity, metric definition and denominator so it makes sense on its own,
-because at query time a section is retrieved and shown to the LLM without
-its neighbours. The embedding model's 32K-token context is far larger than
-any section (longest is ~400 words), so there is no truncation to work
-around - which is what would have forced sub-section splitting under the
-original 256-token MiniLM plan. The text before a document's first `##`
-(the source/definitions preamble) becomes its own "About this document"
-chunk rather than being dropped - it's where the net-vs-gross and
-order-level-vs-item-level caveats live.
-
-Idempotent: every run wipes rag_chunks and reloads it in full. The whole
-knowledge base is this one folder, the load takes seconds, and it keeps
-"re-run ingest" the only thing anyone needs to know after editing a doc -
-no partial-update bookkeeping to get wrong.
-"""
+"""Knowledge base ingestion pipeline into pgvector."""
 import argparse
 import json
 import sys

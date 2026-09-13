@@ -1,23 +1,4 @@
-"""
-app/services/openrouter.py — OpenRouter client wrapper + the deterministic
-fallback path.
-
-The central design rule: every report caller gets the SAME
-`ReportNarrative` shape whether or not an LLM call actually happened.
-`generate_narrative()` never raises and always returns
-`(ReportNarrative, meta)`, with `meta.generated_by` saying which path
-produced it.
-
-This is deliberately NOT built around OpenRouter's
-`response_format={"type": "json_schema"}` strict mode. That mode isn't
-reliably supported across the free models this project targets, so
-depending on it would turn "the model had an off day" into a 500 instead
-of a still-valid report. Instead: ask for JSON in plain text, parse
-leniently, validate with Pydantic, and fall back to the deterministic
-generator on ANY failure — no API key, network error, non-2xx, malformed
-JSON, or schema violation. An LLM problem degrades the narrative; it never
-becomes the caller's error.
-"""
+"""OpenRouter API client wrapper with fallback resilience."""
 import json
 import re
 
@@ -29,9 +10,7 @@ from app.schemas.ai_reports import ReportMeta, ReportNarrative
 
 
 class OpenRouterSettings(BaseSettings):
-    """Separate from `app.db.session.Settings` - this is LLM config, not DB
-    config, and keeping them apart means a typo in one never silently
-    shadows a field in the other."""
+    """Configuration settings for OpenRouter API integration."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

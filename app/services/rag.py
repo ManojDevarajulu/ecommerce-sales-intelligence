@@ -1,34 +1,4 @@
-"""
-app/services/rag.py — grounded answer generation and citations.
-
-    answer_question("Which category has the highest return rate?", db)
-    -> RagQueryResponse(answered=True, answer="Automotive ... [1]", sources=[...])
-
-Three outcomes, in order of precedence:
-
-1. **guard** — retrieval (rag/retrieve.py) found nothing above the
-   similarity threshold. No LLM call at all: `answered=False`, a fixed
-   "insufficient data" message, empty sources. This is the hallucination
-   guard the PDF asks for, and it costs zero OpenRouter requests.
-2. **openrouter** — chunks were retrieved and the model answered from
-   them. The prompt makes it cite `[n]` and tells it to open with
-   INSUFFICIENT DATA if the context doesn't actually contain the answer -
-   that's the second half of the guard, for near-topic questions the
-   threshold can't catch (see rag/retrieve.py docstring); those come back
-   `answered=False` but WITH sources, so the caller can see what was
-   considered.
-3. **extractive_fallback** — chunks were retrieved but OpenRouter failed
-   (no key, network error, rate limit, unusable reply). The knowledge-base
-   sections were written to be readable on their own, so the best match is
-   returned verbatim rather than raising - the same philosophy as the
-   reports' deterministic fallback: an LLM outage degrades the answer, it
-   doesn't break the endpoint. It also keeps this endpoint exercisable
-   without an API key.
-
-Citation shape: the LLM only ever sees chunks as "[1] Doc > Section\n..."
-and is told to cite by number; `sources` lists those same numbers with
-the real doc/section/similarity, so a "[2]" in the answer is checkable.
-"""
+"""Grounded retrieval-augmented generation and citation engine."""
 from sqlalchemy.orm import Session
 
 from app.schemas.rag import RagMeta, RagQueryResponse, RagSource

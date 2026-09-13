@@ -1,26 +1,7 @@
-"""
-rag/calibrate.py — pick the hallucination-guard threshold from data.
-
-    python -m rag.calibrate
-
-Embeds three probe sets and prints each question's best-match similarity:
-
-  in-domain   questions the knowledge base answers (the PDF's 4 samples,
-              paraphrases, and harder ones that target a single section)
-  off-topic   questions with nothing to do with this business
-  near-topic  e-commerce-flavoured questions the docs do NOT answer - these
-              are expected to score HIGH; the threshold can't catch them
-              and the generation prompt has to (see rag/retrieve.py docstring)
-
-The recommended threshold is the midpoint of the gap between the weakest
-in-domain hit and the strongest off-topic hit. The chosen value lives in
-.env as RAG_SIMILARITY_THRESHOLD - re-run this after editing the documents
-or changing the embedding model, since either moves the numbers.
-"""
+"""Calibration utility for retrieval similarity thresholds."""
 from rag.retrieve import search, settings
 
 IN_DOMAIN = [
-    # the PDF's four
     "Which category has the highest return rate?",
     "What are the major patterns in customer ratings?",
     "Which regions or categories are performing strongly?",

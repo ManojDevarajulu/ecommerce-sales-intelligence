@@ -1,13 +1,4 @@
-"""
-app/api/ai.py — the three OpenRouter business report endpoints and the RAG
-assistant endpoint.
-
-All four are POST even though none of them create or mutate a resource.
-That is deliberate: each one triggers a real external LLM call, which
-costs quota and is not free to repeat, unlike the analytics endpoints'
-pure database reads. Modelling them as GETs would invite caching and
-naive retries against a rate-limited third-party API.
-"""
+"""API endpoints for automated business intelligence reports and RAG assistant."""
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status

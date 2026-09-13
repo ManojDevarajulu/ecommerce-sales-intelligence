@@ -1,32 +1,10 @@
-"""
-rag/embeddings.py — embedding generation for the RAG knowledge base.
-
-One job: turn text into vectors, using the Qwen3-Embedding-0.6B model served
-by an Ollama instance (`OLLAMA_BASE_URL`, reached over Tailscale in local
-dev). Used at ingest time (rag/ingest.py, every chunk) and at query time
-(rag/retrieve.py, the user's question) - both MUST go through this module so
-documents and queries are always embedded by the same model; mixing models
-makes the stored vectors silently meaningless.
-
-Why Ollama rather than the two obvious alternatives: a locally downloaded
-sentence-transformers model needs a ~1.2GB download on every machine that
-runs ingest or the API, and OpenRouter's free embedding endpoint shares a
-50-requests/day cap with the generation calls, which one ingest plus a
-live demo would exhaust.
-
-Unlike app/services/openrouter.py this module deliberately does NOT fall
-back on failure. There is no meaningful "deterministic fallback" for an
-embedding - a zero vector would poison the index - so an unreachable server
-or a wrong model is raised as `EmbeddingError` and the caller decides
-(ingest aborts; the API returns a 503).
-"""
+"""Embedding generation client for the RAG knowledge base."""
 import httpx
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class EmbeddingSettings(BaseSettings):
-    """Kept separate from the DB and OpenRouter settings classes for the
-    same reason those are separate from each other."""
+    """Configuration settings for Ollama embedding integration."""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
