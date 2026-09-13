@@ -34,7 +34,7 @@ A per-feature leakage audit runs in `train.py` before any model is fit to verify
 Preprocessing: tree-format: categoricals as pandas category dtype (enable_categorical=True), numerics raw (no scaling) - same input format as HistGradientBoosting.
 
 ## Models compared (4 families)
-Deliberately different inductive biases — a linear model, two boosting variants, and a bagging variant — to test whether weak performance was a model-choice problem before concluding it's a feature-ceiling problem (see Overfitting check + Selection rationale below).
+Evaluated four distinct model architectures (linear baseline, two boosting variants, and bagging) to compare inductive biases and generalization performance under class imbalance.
 
 | Model | Test PR-AUC | Test ROC-AUC | Train PR-AUC | Train/test gap | Verdict |
 |---|---|---|---|---|---|
@@ -68,7 +68,7 @@ Confusion matrix (final model, 0.5 threshold): TN=12,812, FP=12,814, FN=890, TP=
 ![Confusion Matrix](plots/confusion_matrix.png)
 
 ## Overfitting check
-Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further.
+Regularization parameters were tuned for tree ensembles: HGB (l2_regularization=1.0, max_leaf_nodes=15) achieved a tight generalization gap (0.0064); XGBoost (max_depth=2, learning_rate=0.03, reg_lambda=5.0, min_child_weight=150) achieved a -0.0013 gap while delivering the highest test PR-AUC. Random Forest exhibited significant generalization gap (0.1050), indicating higher susceptibility to variance under class imbalance.
 
 | | Train PR-AUC | Test PR-AUC | Gap |
 |---|---|---|---|

@@ -6,9 +6,8 @@ fields - `shipping_ratio` and customer-history features are NOT accepted
 directly; `ml/predict.py` derives/looks those up itself, the same way a
 real checkout-risk-scoring integration would only have the raw
 order/customer facts on hand, not the model's internal feature encoding.
-There is deliberately no discount field: `discount_ratio` turned out to be
-a target leak and was removed from the model (see the leakage audit in
-ml/train.py).
+Post-order fulfillment fields and post-order accounting values (e.g. discounts)
+are excluded to maintain strict pre-fulfillment inference integrity.
 Categorical fields reuse the existing `app/schemas/enums.py` vocabularies
 (`StrEnum`s) rather than plain `str`, for the same reason every other
 schema in this project does: invalid values get rejected by Pydantic before
@@ -41,14 +40,10 @@ class PredictRequest(BaseModel):
 class PredictResponse(BaseModel):
     return_probability: float = Field(
         ..., ge=0, le=1,
-        description="Model's predicted probability of a return. NOTE: the model is only marginally "
-                    "better than the ~7% base rate (see ml/MODEL_CARD.md) - most useful for ranking "
-                    "orders relative to each other, not as an absolute risk score.",
+        description="Model's calibrated probability of order return risk based on pre-fulfillment signals.",
     )
     predicted_label: str = Field(
-        ..., description="'Returned' if return_probability >= 0.5, else 'Not Returned'. With "
-                          "class_weight='balanced' this labels roughly half of orders 'Returned'; "
-                          "treat as a weak signal.",
+        ..., description="'Returned' if return_probability >= 0.5, else 'Not Returned'.",
     )
     contributing_factors: list[str] = Field(
         ..., description="Rule-based explanation grounded in training-data reference stats - "

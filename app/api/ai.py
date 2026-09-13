@@ -83,16 +83,12 @@ def customer_segments_report() -> SegmentsReportResponse:
 def rag_query(body: RagQueryRequest, db: Session = Depends(get_db)) -> RagQueryResponse:
     """Grounded Q&A over the knowledge base in `rag/documents/`.
 
-    See `app/services/rag.py` for the three possible outcomes. On status
-    codes: a question the knowledge base cannot answer is still a
-    successful request — it returns 200 with `answered: false` and an
-    "insufficient data" message, not a 404. Nothing was "not found"; the
-    hallucination guard did its job, and a 4xx would make correct
-    behaviour look like an error to the caller.
+    See `app/services/rag.py` for response resolution states. On HTTP status codes:
+    a query outside the knowledge base coverage returns 200 with `answered: false`
+    and an insufficient data notification, indicating successful guardrail evaluation.
 
-    The single error path is the embedding service being unreachable.
-    Without a question vector nothing downstream can run, and that is a
-    dependency outage rather than a client mistake, so it maps to 503.
+    If the upstream embedding service is unreachable, a 503 Service Unavailable
+    is returned representing the upstream dependency outage.
     """
     try:
         return answer_question(body.question, db, top_k=body.top_k)

@@ -306,12 +306,9 @@ def compute_rfm_and_segments() -> SegmentsStats:
     # largest rank) - exactly what recency needs (fewest days = best,
     # so days must be ranked with the biggest values first). Frequency/
     # monetary need the opposite (`ascending=True`: smallest raw value ->
-    # rank 1, so the biggest count/spend gets the largest rank -> score 5).
-    # This direction was verified against a toy series before being trusted
-    # on real data, rather than just reasoned through: a first attempt had
-    # the ranking inverted, which produced Champions with the WORST average
-    # recency and Lost/At Risk with the best - plausible-looking output that
-    # was exactly backwards.
+    # Recency is scored inversely (fewer days since last purchase yields the highest
+    # score 5), while frequency and monetary spend are scored directly (higher volume
+    # and spend yield higher scores).
     def score(series: pd.Series, ascending: bool) -> pd.Series:
         ranks = series.rank(method="first", ascending=ascending)
         return pd.qcut(ranks, 5, labels=[1, 2, 3, 4, 5]).astype(int)

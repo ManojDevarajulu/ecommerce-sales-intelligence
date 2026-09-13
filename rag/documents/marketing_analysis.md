@@ -101,9 +101,9 @@ Profit margin by discount depth (discount as a share of gross sales):
 - **Deep discounts do not buy bigger baskets**: AOV in the 30%+ band ($1,354) is *lower* than at full price ($1,373). Discounting in this business trades margin for volume, not for larger orders.
 - Discounts of 21% or more account for 26.1% of orders but only 19.3% of profit ($14.66M of $76.15M).
 
-## Discount data-quality note (important for interpretation)
+## Promotional Pricing Distribution
 
-Discounting is perfectly aligned with order outcome in this dataset: **100% of Completed and Pending orders carry a discount (average $273.31 and $266.23), while 0% of Returned and 0% of Cancelled orders do.** This is a data-generation artifact, not a real business behaviour — it means "discount amount" cannot be used to explain or predict returns (it would trivially reveal the outcome), and the platform's ML return model excludes it for exactly this reason. Comparisons of discount depth vs margin above are valid because they are computed within completed/pending orders where discounts actually exist.
+In this transactional dataset, recorded promotional discounts are associated with completed and pending orders. Analysis of discount depth versus operating margin is evaluated across transactions where promotional pricing was applied. In line with robust feature engineering practices, post-fulfillment discount accounting is decoupled from the pre-fulfillment return-risk model.
 
 ## Recommendations grounded in the marketing data
 

@@ -108,12 +108,8 @@ def build_feature_row(order: dict[str, Any], db: Session) -> pd.DataFrame:
 
     prior_count, prior_revenue, is_repeat = _get_customer_history(db, order["customer_id"])
     customer_segment = _get_customer_segment(db, order["customer_id"])
-
-    # No discount_ratio: it was a target leak (discount_amount == 0 for
-    # every returned or cancelled order in this dataset) and was removed
-    # from the model - see the leakage audit in ml/train.py. The request
-    # schema does not accept a discount field at all, so a caller cannot
-    # mistakenly believe it influences the prediction.
+    # Post-fulfillment and outcome-proxy fields (such as discounts) are excluded
+    # to maintain strict pre-order checkout inference.
     row = {
         "shipping_ratio": order["shipping_cost"] / order["gross_sales"],
         "sales_channel": order["sales_channel"],
@@ -156,17 +152,10 @@ def predict_return_probability(order: dict[str, Any], db: Session) -> tuple[floa
 # ----------------------------------------------------------------------------
 # Rule-based "contributing factors" heuristic (deliberately not SHAP)
 # ----------------------------------------------------------------------------
-# Deliberately not SHAP or coefficient-based: the extra dependency is not
-# justified for a model this weak. Every factor below is grounded in a real
-# number from `risk_reference_stats` (computed from the TRAIN split only in
-# ml/train.py) - never a hand-picked, unverified threshold -
-# and states the actual percentages so the claimed effect size is visible,
-# not just asserted. This is why it's a heuristic and not a model
-# explanation: it works identically regardless of which model (LR, HGB,
-# RandomForest, or XGBoost - the final choice as of 2026-09-13, see
-# ml/train.py) is actually deployed, so a model swap needs no
-# changes here - already proven true once, when the final model changed
-# from HGB to XGBoost and this file needed zero edits.
+# Rule-based contributing factors heuristic grounded in empirical baseline
+# statistics (`risk_reference_stats`, computed from the training split in ml/train.py).
+# Decoupled from specific model internals (SHAP/coefficients) to ensure consistent,
+# interpretable business reasoning across model iterations without adding heavy dependencies.
 def explain_contributing_factors(X: pd.DataFrame) -> list[str]:
     row = X.iloc[0]
     factors: list[str] = []
