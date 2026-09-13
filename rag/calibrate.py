@@ -1,5 +1,5 @@
 """
-rag/calibrate.py — T140: pick the hallucination-guard threshold from data.
+rag/calibrate.py — pick the hallucination-guard threshold from data.
 
     python -m rag.calibrate
 

@@ -1,12 +1,13 @@
 -- ============================================================================
 -- E-Commerce Sales Intelligence Platform - Analytics Queries
 -- File: sql/02_analytics_queries.sql
--- All revenue/profit figures use net_sales (post-discount) per the locked
--- dataset-definition finding in SCOPE.md / INTERVIEW_PREP.md.
+-- All revenue/profit figures use net_sales (post-discount). That is this
+-- dataset's own definition of revenue: summing gross_sales instead
+-- overstates the published total by about 7%.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
--- Q1 (T044): Top 10 customers by revenue
+-- Q1: Top 10 customers by revenue
 -- ----------------------------------------------------------------------------
 SELECT
     c.customer_id,
@@ -23,7 +24,7 @@ ORDER BY total_revenue DESC
 LIMIT 10;
 
 -- ----------------------------------------------------------------------------
--- Q2 (T045): Top 10 products by revenue
+-- Q2: Top 10 products by revenue
 -- ----------------------------------------------------------------------------
 -- Product-level revenue only exists at the order_items grain, not on orders.
 SELECT
@@ -39,7 +40,7 @@ ORDER BY total_revenue DESC
 LIMIT 10;
 
 -- ----------------------------------------------------------------------------
--- Q3 (T046): Monthly revenue trend
+-- Q3: Monthly revenue trend
 -- ----------------------------------------------------------------------------
 SELECT
     date_trunc('month', order_date)::date AS month,
@@ -50,7 +51,7 @@ GROUP BY 1
 ORDER BY 1;
 
 -- ----------------------------------------------------------------------------
--- Q4 (T047): Yearly revenue + YoY growth
+-- Q4: Yearly revenue + YoY growth
 -- ----------------------------------------------------------------------------
 WITH yearly AS (
     SELECT
@@ -71,7 +72,7 @@ FROM yearly
 ORDER BY year;
 
 -- ----------------------------------------------------------------------------
--- Q5 (T048): Revenue & margin by product category
+-- Q5: Revenue & margin by product category
 -- ----------------------------------------------------------------------------
 SELECT
     p.product_category,
@@ -84,11 +85,12 @@ GROUP BY p.product_category
 ORDER BY total_revenue DESC;
 
 -- ----------------------------------------------------------------------------
--- Q6 (T049): Revenue & fulfillment by region
+-- Q6: Revenue & fulfillment by region
 -- ----------------------------------------------------------------------------
--- Uses orders' own `region` column (denormalized at order time) directly —
--- no merge with customers needed (see the region merge/KeyError gotcha in
--- INTERVIEW_PREP.md).
+-- Uses orders' own `region` column (denormalized at order time) directly,
+-- with no join to customers: the order-time value is the correct one for a
+-- historical report, and joining would also collide with the customers
+-- table's own `region` column.
 -- NOTE: delivery_status = 'Cancelled' is this dataset's catch-all for "did
 -- not complete a normal on-time delivery" — it bundles true cancellations,
 -- still-pending orders, AND returns together (every returned order also
@@ -108,7 +110,7 @@ GROUP BY region
 ORDER BY total_revenue DESC;
 
 -- ----------------------------------------------------------------------------
--- Q7 (T050): Average order value by sales channel
+-- Q7: Average order value by sales channel
 -- ----------------------------------------------------------------------------
 SELECT
     sales_channel,
@@ -120,7 +122,7 @@ GROUP BY sales_channel
 ORDER BY total_revenue DESC;
 
 -- ----------------------------------------------------------------------------
--- Q8 (T051): Return rate — overall, and by product category
+-- Q8: Return rate — overall, and by product category
 -- ----------------------------------------------------------------------------
 -- Overall
 SELECT
@@ -148,7 +150,7 @@ GROUP BY p.product_category
 ORDER BY return_rate_pct DESC;
 
 -- ----------------------------------------------------------------------------
--- Q9 (T052): Rating distribution & its relationship to returns/delivery
+-- Q9: Rating distribution & its relationship to returns/delivery
 -- ----------------------------------------------------------------------------
 -- Rating distribution
 SELECT rating, COUNT(*) AS num_ratings
@@ -159,7 +161,8 @@ ORDER BY rating;
 -- "Correlation with returns" is structurally degenerate in this dataset:
 -- return_status is only ever set when delivery_status = 'Cancelled', which
 -- is exactly the state that also blocks a rating from ever being collected
--- (see the T031/EDA structural-nulls finding). So no returned order can ever
+-- (the same structural-nulls pattern the schema comments describe). So no
+-- returned order can ever
 -- carry a rating — verify that disjointness explicitly rather than compute
 -- a misleading Pearson correlation on an all-null slice.
 SELECT
@@ -180,7 +183,7 @@ GROUP BY o.delivery_status
 ORDER BY avg_rating DESC;
 
 -- ----------------------------------------------------------------------------
--- Q10 (T053): Profitability vs. discount level
+-- Q10: Profitability vs. discount level
 -- ----------------------------------------------------------------------------
 SELECT
     CASE
@@ -199,7 +202,7 @@ GROUP BY 1
 ORDER BY 1;
 
 -- ----------------------------------------------------------------------------
--- Q11 (T054): Marketing-channel ROI
+-- Q11: Marketing-channel ROI
 -- ----------------------------------------------------------------------------
 -- This dataset has no per-campaign ad-spend figure, only a one-time
 -- `customer_acquisition_cost` per customer. Proxy for ROI: attribute each

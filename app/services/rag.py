@@ -1,5 +1,5 @@
 """
-app/services/rag.py — T141/T142: grounded answer generation + citations.
+app/services/rag.py — grounded answer generation and citations.
 
     answer_question("Which category has the highest return rate?", db)
     -> RagQueryResponse(answered=True, answer="Automotive ... [1]", sources=[...])
@@ -18,11 +18,12 @@ Three outcomes, in order of precedence:
    `answered=False` but WITH sources, so the caller can see what was
    considered.
 3. **extractive_fallback** — chunks were retrieved but OpenRouter failed
-   (no key, network, rate-limited, bad reply). The retrieved sections are
-   already human-readable answers, so return the best one verbatim rather
-   than an error - same philosophy as the reports' deterministic fallback
-   (T117): an LLM outage degrades the answer, it doesn't break the
-   endpoint. Also what keeps this endpoint testable without a key.
+   (no key, network error, rate limit, unusable reply). The knowledge-base
+   sections were written to be readable on their own, so the best match is
+   returned verbatim rather than raising - the same philosophy as the
+   reports' deterministic fallback: an LLM outage degrades the answer, it
+   doesn't break the endpoint. It also keeps this endpoint exercisable
+   without an API key.
 
 Citation shape: the LLM only ever sees chunks as "[1] Doc > Section\n..."
 and is told to cite by number; `sources` lists those same numbers with

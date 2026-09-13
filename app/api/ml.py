@@ -1,8 +1,12 @@
 """
-app/api/ml.py — T113: `POST /ml/predict`, wiring `ml/predict.py` (T110/T111)
-into the FastAPI app the same way `app/api/analytics.py` wires up
-`app/services/analytics.py` - the ML logic itself stays in `ml/`, this
-module is just the HTTP layer + `get_db` plumbing on top of it.
+app/api/ml.py — `POST /ml/predict`.
+
+Thin HTTP layer over `ml/predict.py`, the same way `app/api/analytics.py`
+sits over `app/services/analytics.py`: the model loading, feature building
+and scoring all stay in `ml/`, and this module only unpacks the request,
+supplies the database session, and maps errors to status codes. Keeping
+the split means the model can be retrained or swapped without touching
+any API code.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -29,9 +33,10 @@ def predict(request: PredictRequest, db: Session = Depends(get_db)) -> PredictRe
     try:
         probability, X = predict_return_probability(order, db)
     except ValueError as exc:
-        # An unrecognized categorical value (build_feature_row's guard) or a
-        # non-positive gross_sales - a client input problem (422-ish), not a
-        # server error, even though it's only caught this deep in the stack.
+        # Raised by build_feature_row for an unrecognized categorical value
+        # or a non-positive gross_sales. That is a problem with the client's
+        # input, not a server fault - it just happens to be detected deep in
+        # the feature-building code rather than at the schema boundary.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return PredictResponse(

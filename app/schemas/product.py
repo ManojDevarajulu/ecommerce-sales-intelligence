@@ -1,5 +1,5 @@
 """
-app/schemas/product.py — T064: Pydantic schemas for the `products` resource.
+app/schemas/product.py — Pydantic schemas for the `products` resource.
 
 Field constraints mirror `sql/01_schema.sql`'s CHECK constraints exactly
 (`unit_price`/`product_cost` >= 0, `product_rating` 0.0-5.0).

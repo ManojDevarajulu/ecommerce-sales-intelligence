@@ -1,11 +1,13 @@
 """
-app/db/reconcile.py — T041/T043: reconciliation check.
+app/db/reconcile.py — reconciliation check against the published totals.
 
 Compares aggregates computed from the loaded Postgres tables against the
 published ground-truth totals in `data/dataset/dataset_statistics.csv`.
 Exits non-zero (and prints a FAIL line) if any metric is off by more than a
 cent/0.01pp of rounding tolerance — this is the same check that caught the
-net_sales-vs-gross_sales bug during EDA (see INTERVIEW_PREP.md).
+net_sales-vs-gross_sales definition mismatch during EDA: summing
+gross_sales overstates revenue by about 7%, and only this comparison
+against the published figure makes that visible.
 """
 import os
 import sys

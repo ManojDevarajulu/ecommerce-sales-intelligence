@@ -1,5 +1,5 @@
 """
-app/models/product.py — T059: SQLAlchemy model for the `products` table.
+app/models/product.py — SQLAlchemy model for the `products` table.
 
 Mirrors `sql/01_schema.sql` column-for-column; that file is the schema's
 source of truth, this model exists for querying/CRUD only.
@@ -38,7 +38,7 @@ class Product(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
 
     # `products.product_id` is ON DELETE RESTRICT from order_items — let
-    # Postgres enforce that (raising the IntegrityError T076 maps to a 409)
+    # Postgres enforce that (raising the IntegrityError the router maps to a 409)
     # instead of SQLAlchemy trying to null out order_items.product_id first
     # (which would fail anyway, since that column is NOT NULL).
     order_items: Mapped[list["OrderItem"]] = relationship(

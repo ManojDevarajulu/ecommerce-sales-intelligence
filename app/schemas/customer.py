@@ -1,5 +1,5 @@
 """
-app/schemas/customer.py — T063: Pydantic schemas for the `customers` resource.
+app/schemas/customer.py — Pydantic schemas for the `customers` resource.
 
 Field constraints mirror `sql/01_schema.sql`'s CHECK constraints and column
 sizes exactly (`customer_age` 0-120, `customer_acquisition_cost`

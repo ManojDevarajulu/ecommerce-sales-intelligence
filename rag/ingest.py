@@ -1,5 +1,5 @@
 """
-rag/ingest.py — T136/T138: knowledge-base ingest.
+rag/ingest.py — knowledge-base ingest.
 
     python -m rag.ingest            # chunk -> embed -> (re)load rag_chunks
     python -m rag.ingest --dry-run  # chunk only, print what would be stored
@@ -8,7 +8,7 @@ Pipeline: rag/documents/*.md -> one chunk per `##` section -> embeddings
 (rag/embeddings.py, Ollama) -> rag_chunks (pgvector).
 
 Chunking = one chunk per `##` section, no further splitting. The documents
-were written for exactly this (T130-T135): every section restates its own
+were written for exactly this: every section restates its own
 entity, metric definition and denominator so it makes sense on its own,
 because at query time a section is retrieved and shown to the LLM without
 its neighbours. The embedding model's 32K-token context is far larger than

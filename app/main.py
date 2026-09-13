@@ -1,6 +1,8 @@
 """
-app/main.py — T082: FastAPI application entrypoint. Registers every router,
-and serves the RAG assistant page (T149) at `/`.
+app/main.py — FastAPI application entrypoint.
+
+Registers the CRUD, analytics, ML, AI-report and RAG routers, exposes a
+`/health` probe, and serves the RAG assistant page at `/`.
 """
 from pathlib import Path
 
@@ -40,7 +42,10 @@ _ASSISTANT_PAGE = Path(__file__).parent / "static" / "index.html"
 
 @app.get("/", include_in_schema=False)
 def assistant_page() -> FileResponse:
-    """T149: the RAG chat widget - one static HTML file, no build step, same
-    origin as the API so its `fetch("/ai/rag/query")` needs no CORS setup.
-    Hidden from Swagger: it's a page, not an endpoint."""
+    """The RAG chat widget — one static HTML file, no build step.
+
+    Served from the API's own origin so its `fetch("/ai/rag/query")` needs
+    no CORS configuration. Hidden from the OpenAPI schema because it's a
+    page, not an endpoint.
+    """
     return FileResponse(_ASSISTANT_PAGE, media_type="text/html")

@@ -1,5 +1,5 @@
 """
-rag/retrieve.py — T140: similarity search over rag_chunks + the
+rag/retrieve.py — similarity search over rag_chunks, plus the
 hallucination guard.
 
     retrieve("Which category has the highest return rate?")
@@ -8,23 +8,24 @@ hallucination guard.
 Flow: embed the question (rag/embeddings.py - same model as ingest, with
 Qwen3's query-side instruction prefix) -> pgvector cosine search
 (`embedding <=> query`, ORDER BY + LIMIT, served by the HNSW index when the
-planner judges it worthwhile - at 60 rows it correctly prefers a seq scan;
-T139) -> drop every chunk whose similarity is below the threshold.
+planner judges it worthwhile; at 60 rows it correctly prefers a sequential
+scan) -> drop every chunk whose similarity is below the threshold.
 
 The guard is the threshold. If the best-matching chunk is still below it,
 the knowledge base has nothing relevant and the caller must answer
 "insufficient data" instead of letting the LLM improvise from unrelated
 context. The threshold is not a guess: rag/calibrate.py embeds a probe set
-of in-domain and off-topic questions and prints the gap between them
-(INTERVIEW_PREP.md 2026-09-13 has the numbers). Similarity here is
+of in-domain and off-topic questions and prints the gap between them: the
+in-domain best hits scored 0.565-0.844 and off-topic 0.102-0.240, leaving
+roughly 0.16 of margin on either side of the chosen 0.40. Similarity here is
 1 - cosine distance, so 1.0 = identical direction, 0 = orthogonal.
 
 Known limit, deliberately not solved here: the guard catches OFF-TOPIC
 questions ("capital of France"), not NEAR-TOPIC ones the documents don't
 actually answer ("what was revenue in 2019?" - the docs cover 2021-2025).
 Those embed close to real sections and pass the threshold; refusing them
-is the generation prompt's job (T141: "answer only from the context; if
-the context doesn't contain it, say so").
+is the generation prompt's job ("answer only from the context; if the
+context doesn't contain it, say so").
 """
 import json
 from dataclasses import dataclass

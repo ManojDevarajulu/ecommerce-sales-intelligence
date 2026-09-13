@@ -1,5 +1,5 @@
 {
-  "trained_at": "2026-09-13T08:36:14.282197+00:00",
+  "trained_at": "2026-09-13T17:09:20.542508+00:00",
   "sklearn_version": "1.5.2",
   "problem": "Order Return Prediction (binary classification: order_status == 'Returned')",
   "final_model": {
@@ -131,7 +131,7 @@
     }
   },
   "risk_reference_stats": {
-    "note": "Computed from the TRAIN split only (T111's contributing-factors heuristic must never be grounded in test-set information). Used by ml/predict.py to explain a prediction with real historical numbers instead of made-up thresholds.",
+    "note": "Computed from the TRAIN split only (the contributing-factors heuristic must never be grounded in test-set information). Used by ml/predict.py to explain a prediction with real historical numbers instead of made-up thresholds.",
     "overall_train_return_rate": 0.06777176568522775,
     "category_return_rates": {
       "sales_channel": {
@@ -377,7 +377,7 @@
     "random_guess_pr_auc_floor": 0.07145445322124791
   },
   "overfitting_check": {
-    "note": "Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further. Full detail in INTERVIEW_PREP.md 2026-09-13.",
+    "note": "Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further.",
     "final_model_train_test_pr_auc_gap": -0.0013116709523248171,
     "baseline_model_train_test_pr_auc_gap": -0.001410688260402207,
     "all_models_train_test_pr_auc_gap": {
@@ -388,10 +388,10 @@
     }
   },
   "excluded_features": {
-    "discount_ratio": "TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found at T114, removed; every metric here is from the leak-free retrain.",
-    "delivery_days / estimated_delivery_days / delivery_status": "NULL/'Cancelled' for 100% of returned orders - leaks the outcome (T098).",
-    "ratings.*": "0 of 9,462 returned orders ever have a rating, by construction (T093).",
-    "customer_lifetime_value / customer_order_count / is_repeat_customer (raw)": "lifetime aggregates, not point-in-time snapshots (T100); recomputed as-of-order instead.",
+    "discount_ratio": "TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found during API smoke testing, removed; every metric here is from the leak-free retrain.",
+    "delivery_days / estimated_delivery_days / delivery_status": "NULL/'Cancelled' for 100% of returned orders - leaks the outcome.",
+    "ratings.*": "0 of 9,462 returned orders ever have a rating, by construction.",
+    "customer_lifetime_value / customer_order_count / is_repeat_customer (raw)": "lifetime aggregates, not point-in-time snapshots; recomputed as-of-order instead.",
     "payment_status": "'Refunded' <=> Returned - a post-outcome field, never a candidate."
   },
   "selection_rationale": "XGBoost (regularized) selected after comparing FOUR model families (LogisticRegression, HistGradientBoosting, RandomForest, XGBoost) - deliberately including a linear model, two boosting variants, and a bagging variant to test whether the near-random result (see below) was a model-choice problem. It wasn't: all four converged to a tight 0.076-0.082 test PR-AUC band. XGBoost leads on every test metric (PR-AUC 0.0819 vs HGB's 0.0804, ROC-AUC 0.5374 vs 0.5362) with an even smaller train/test gap than HGB's already-small one. RandomForest was rejected outright: worse test PR-AUC AND by far the worst overfitting of any model tried. IMPORTANT CONTEXT: on the leak-free feature set, no model is much better than random (test PR-AUC ~0.08 vs. a 0.0715 base rate; ROC-AUC ~0.54 vs 0.5). The pre-fix 0.57 PR-AUC / 0.97 ROC-AUC was almost entirely the discount_ratio leak. Trying four different algorithms and landing in the same narrow band - including a high-capacity model failing to fit even the training data much better - is the evidence that this is a feature ceiling, not something a different or better-tuned algorithm would fix. The shipped model should be read as 'slightly better than the base rate', not as a confident risk score."

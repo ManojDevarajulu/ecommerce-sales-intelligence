@@ -1,11 +1,15 @@
 """
-app/api/analytics.py — T085-T090: the 6 analytics endpoints wrapping
-`sql/02_analytics_queries.sql`'s Q1-Q11, with optional date/region/category
-filters, via `app/services/analytics.py`'s executor.
+app/api/analytics.py — the six analytics endpoints.
 
-Every query here is the same query already reviewed and verified in
-`sql/02_analytics_queries.sql` / INTERVIEW_PREP.md — this module only adds
-the optional `WHERE` filtering on top, through `optional_where`.
+Each one wraps queries from `sql/02_analytics_queries.sql` (Q1-Q11) and
+adds optional date/region/category filtering on top, through
+`optional_where` in `app/services/analytics.py`.
+
+The SQL is intentionally kept close to the standalone query file rather
+than rewritten in the ORM: those queries were reconciled against the
+dataset's own published totals, and keeping the two in the same shape
+means a figure from the API can be checked against the figure from the
+SQL file without translating between two dialects.
 """
 from datetime import date
 
@@ -34,7 +38,7 @@ def sales_analytics(
     region: Region | None = Query(None, description="Filter to one region"),
     db: Session = Depends(get_db),
 ) -> SalesAnalyticsResponse:
-    """T085 — Q3 (monthly revenue trend) + Q4 (yearly revenue + YoY growth)."""
+    """Monthly revenue trend (Q3) and yearly revenue with YoY growth (Q4)."""
     where_sql, params = optional_where(
         ("order_date >= :date_from", "date_from", date_from),
         ("order_date <= :date_to", "date_to", date_to),
@@ -77,7 +81,7 @@ def customer_analytics(
     limit: int = Query(10, ge=1, le=100, description="Top N customers by revenue"),
     db: Session = Depends(get_db),
 ) -> CustomerAnalyticsResponse:
-    """T086 — Q1 (top customers by revenue)."""
+    """Top customers by revenue (Q1)."""
     where_sql, params = optional_where(
         ("c.region = :region", "region", region.value if region else None),
         ("c.customer_segment = :customer_segment", "customer_segment", customer_segment),
@@ -109,7 +113,7 @@ def product_analytics(
     limit: int = Query(10, ge=1, le=100, description="Top N products by revenue"),
     db: Session = Depends(get_db),
 ) -> ProductAnalyticsResponse:
-    """T087 — Q2 (top products by revenue) + Q5 (category revenue/margin).
+    """Top products by revenue (Q2) and revenue/margin by category (Q5).
 
     Both queries join `orders` (not just `order_items`) so `date_from`/
     `date_to` can filter them the same way as every other endpoint.
@@ -160,7 +164,7 @@ def region_analytics(
     date_to: date | None = Query(None, description="order_date <= this date"),
     db: Session = Depends(get_db),
 ) -> RegionAnalyticsResponse:
-    """T088 — Q6 (revenue & fulfillment by region).
+    """Revenue and fulfillment performance by region (Q6).
 
     See `sql/02_analytics_queries.sql`'s Q6 comment: `delivery_status =
     'Cancelled'` bundles true cancellations, pending orders, AND returns
@@ -195,7 +199,8 @@ def marketing_analytics(
     date_to: date | None = Query(None, description="order_date <= this date"),
     db: Session = Depends(get_db),
 ) -> MarketingAnalyticsResponse:
-    """T089 — Q7 (AOV by sales channel) + Q11 (marketing-channel ROI).
+    """Average order value by sales channel (Q7) and marketing-channel
+    ROI (Q11).
 
     The date filter applies to Q7 directly, and to Q11's *lifetime revenue*
     window — but deliberately NOT to which channel a customer is attributed
@@ -261,7 +266,7 @@ def rating_analytics(
     date_to: date | None = Query(None, description="order_date <= this date"),
     db: Session = Depends(get_db),
 ) -> RatingAnalyticsResponse:
-    """T090 — Q9 (rating distribution + delivery-status correlate) + Q8
+    """Rating distribution and its delivery-status correlate (Q9), plus
     (return rate, overall and by category).
 
     `rating_distribution`/`rating_by_delivery_status` join through `orders`

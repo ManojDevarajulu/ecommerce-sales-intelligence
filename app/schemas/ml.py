@@ -1,16 +1,16 @@
 """
-app/schemas/ml.py — T112: request/response schemas for `POST /ml/predict`.
+app/schemas/ml.py — request/response schemas for `POST /ml/predict`.
 
 `PredictRequest` deliberately mirrors a real, not-yet-placed order's raw
-fields (see INTERVIEW_PREP.md, 2026-09-13, "T110-114 input contract
-decision") - `shipping_ratio`/customer-history features are NOT accepted
+fields - `shipping_ratio` and customer-history features are NOT accepted
 directly; `ml/predict.py` derives/looks those up itself, the same way a
 real checkout-risk-scoring integration would only have the raw
 order/customer facts on hand, not the model's internal feature encoding.
 There is deliberately no discount field: `discount_ratio` turned out to be
-a target leak and was removed from the model (see ml/train.py, T096).
+a target leak and was removed from the model (see the leakage audit in
+ml/train.py).
 Categorical fields reuse the existing `app/schemas/enums.py` vocabularies
-(T063's `StrEnum`s) rather than plain `str`, for the same reason every other
+(`StrEnum`s) rather than plain `str`, for the same reason every other
 schema in this project does: invalid values get rejected by Pydantic before
 they ever reach the model, and Swagger documents the valid set for free.
 """
@@ -34,7 +34,7 @@ class PredictRequest(BaseModel):
     region: Region
     primary_category: ProductCategory = Field(
         ..., description="Category of the order's highest-value line item "
-                          "(same 'primary category' definition used in training, T099)."
+                          "(same 'primary category' definition used in training)."
     )
 
 

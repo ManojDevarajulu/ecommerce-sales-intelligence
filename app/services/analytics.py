@@ -1,6 +1,6 @@
 """
-app/services/analytics.py — T084: reusable parametrized query executor for
-the analytics endpoints (T085-T090).
+app/services/analytics.py — reusable parametrized query executor and
+filter builder shared by the analytics endpoints.
 
 The queries themselves stay in `sql/02_analytics_queries.sql` as the
 reviewed, documented source of truth; this module is just the plumbing that

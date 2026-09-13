@@ -11,10 +11,9 @@ Load order matters for FK dependencies:
     -> order_items        (FK -> orders, products)
     -> ratings            (FK -> orders, customers; only non-null ratings)
 
-Tasks: T036 (customers), T037 (products), T038 (orders — explicit column
-selection/order, since the source CSV also carries denormalized customer
-fields that live in `customers` instead), T039 (order_items), T040 (ratings,
-derived from orders, non-null rating only).
+Each loader selects its columns explicitly rather than copying the CSV
+wholesale: the orders CSV also carries denormalized customer demographics
+and review fields, which belong in `customers` and `ratings` instead.
 """
 import os
 from pathlib import Path
@@ -57,7 +56,7 @@ def _copy(conn: psycopg.Connection, table: str, cols: list[str], df: pd.DataFram
 
 
 def load_customers(conn) -> int:
-    """T036 — customers loader."""
+    """Load the customer dimension from `customer_master.csv`."""
     df = pd.read_csv(DATA_DIR / "customer_master.csv")
     cols = [
         "customer_id", "customer_name", "customer_age", "gender", "customer_segment",
@@ -68,7 +67,7 @@ def load_customers(conn) -> int:
 
 
 def load_products(conn) -> int:
-    """T037 — products loader."""
+    """Load the product catalog from `product_catalog.csv`."""
     df = pd.read_csv(DATA_DIR / "product_catalog.csv")
     cols = [
         "product_id", "product_name", "product_category", "product_subcategory",
@@ -94,14 +93,14 @@ ORDERS_COLS = [
 
 
 def load_orders(conn) -> int:
-    """T038 — orders loader."""
+    """Load order-level facts from the main sales CSV."""
     df = pd.read_csv(DATA_DIR / "ecommerce_sales_customer_analytics_150k.csv")
     df["order_date"] = pd.to_datetime(df["order_date"]).dt.date
     return _copy(conn, "orders", ORDERS_COLS, df)
 
 
 def load_order_items(conn) -> int:
-    """T039 — order_items loader."""
+    """Load line items from `order_items.csv`."""
     df = pd.read_csv(DATA_DIR / "order_items.csv")
     cols = [
         "order_id", "product_id", "quantity", "unit_price", "discount_percentage",
@@ -112,7 +111,13 @@ def load_order_items(conn) -> int:
 
 
 def load_ratings(conn) -> int:
-    """T040 — ratings loader, derived from the orders CSV, non-null rating only."""
+    """Load ratings, derived from the orders CSV.
+
+    Only rows with a non-null `customer_rating` become rows here - the
+    ~17.8% of orders that were never delivered have nothing to rate, which
+    is exactly why ratings is its own table rather than nullable columns
+    on `orders`.
+    """
     df = pd.read_csv(DATA_DIR / "ecommerce_sales_customer_analytics_150k.csv")
     df = df[df["customer_rating"].notna()]
     rename = {

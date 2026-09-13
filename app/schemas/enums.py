@@ -1,8 +1,8 @@
 """
-app/schemas/enums.py — shared categorical vocabularies, add-on under T063.
+app/schemas/enums.py — shared categorical vocabularies.
 
-Every value set here was verified directly against the source CSVs (see
-INTERVIEW_PREP.md) before being locked in — not guessed from column names.
+Every value set here was verified directly against the source CSVs before
+being locked in, rather than guessed from column names.
 Using `StrEnum` (not a plain `str` + regex) makes each valid set of values
 self-documenting in the OpenAPI/Swagger docs and rejects typos at the
 request-validation layer instead of at the database.

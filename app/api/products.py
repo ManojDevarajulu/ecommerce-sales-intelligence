@@ -1,5 +1,10 @@
 """
-app/api/products.py — T072-T076: CRUD router for the `products` resource.
+app/api/products.py — CRUD router for the `products` resource.
+
+Same shape as the customers router: a duplicate `product_id` on create is
+caught by the primary key and returned as 409, and deleting a product that
+still appears in `order_items` is refused by Postgres (`ON DELETE
+RESTRICT`) and surfaced as 409 rather than a 500.
 """
 from typing import Literal
 
@@ -29,7 +34,7 @@ def list_products(
     sort_dir: Literal["asc", "desc"] = Query("desc"),
     db: Session = Depends(get_db),
 ) -> PaginatedResponse[ProductResponse]:
-    """T072 — list products with pagination, category/brand filters, and sort."""
+    """List products with pagination, category/brand filters, and sorting."""
     stmt = select(Product)
     if product_category is not None:
         stmt = stmt.where(Product.product_category == product_category.value)
@@ -48,7 +53,7 @@ def list_products(
 
 @router.get("/{product_id}", response_model=ProductResponse)
 def get_product(product_id: str, db: Session = Depends(get_db)) -> Product:
-    """T073 — get one product by id, 404 if it doesn't exist."""
+    """Get one product by id, 404 if it doesn't exist."""
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product '{product_id}' not found")
@@ -57,7 +62,7 @@ def get_product(product_id: str, db: Session = Depends(get_db)) -> Product:
 
 @router.post("", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 def create_product(payload: ProductCreate, db: Session = Depends(get_db)) -> Product:
-    """T074 — create a product; duplicate `product_id` -> 409."""
+    """Create a product. A duplicate `product_id` becomes a 409."""
     product = Product(**payload.model_dump())
     db.add(product)
     try:
@@ -76,8 +81,12 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db)) -> Pro
 @router.put("/{product_id}", response_model=ProductResponse)
 @router.patch("/{product_id}", response_model=ProductResponse)
 def update_product(product_id: str, payload: ProductUpdate, db: Session = Depends(get_db)) -> Product:
-    """T075 — partial update, reachable via both PUT and PATCH (see the same
-    decision logged for T070 in INTERVIEW_PREP.md)."""
+    """Partial update, reachable via both PUT and PATCH.
+
+    As on the customers router, PUT applies `exclude_unset=True` and so
+    behaves like PATCH: only the fields actually sent are changed, rather
+    than an omitted field silently nulling the stored value.
+    """
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product '{product_id}' not found")
@@ -92,8 +101,12 @@ def update_product(product_id: str, payload: ProductUpdate, db: Session = Depend
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(product_id: str, db: Session = Depends(get_db)) -> None:
-    """T076 — delete a product. `order_items.product_id` is ON DELETE
-    RESTRICT, so a product with order history can't be deleted -> 409."""
+    """Delete a product.
+
+    `order_items.product_id` is declared `ON DELETE RESTRICT`, so a product
+    that has ever been sold cannot be deleted; that foreign-key violation
+    is what becomes the 409.
+    """
     product = db.get(Product, product_id)
     if product is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, f"Product '{product_id}' not found")

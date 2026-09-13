@@ -1,8 +1,9 @@
 # Entity-Relationship Diagram
 
-Schema: [`sql/01_schema.sql`](../sql/01_schema.sql). See `SCOPE.md` and
-`INTERVIEW_PREP.md` for the design rationale (why `ratings` is split out,
-why `orders` keeps only point-in-time customer snapshot fields, etc.).
+Schema: [`sql/01_schema.sql`](../sql/01_schema.sql). The design notes at the
+bottom of this file cover the two choices worth explaining: why `ratings` is
+split out of `orders`, and why `orders` keeps only point-in-time customer
+snapshot fields.
 
 ```mermaid
 erDiagram
@@ -111,7 +112,7 @@ erDiagram
     }
 ```
 
-`rag_chunks` (Phase 8) has no FK relationship to the transactional tables —
+`rag_chunks` has no FK relationship to the transactional tables —
 it stores embedded chunks of the markdown knowledge-base documents generated
 from this data, not the rows themselves, so it's omitted from the
 relationship edges above.

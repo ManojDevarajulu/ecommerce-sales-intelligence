@@ -1,5 +1,5 @@
 """
-tests/test_ml.py — T156: test for `POST /ml/predict` (app/api/ml.py /
+tests/test_ml.py — tests for `POST /ml/predict` (app/api/ml.py /
 ml/predict.py), against the isolated `ecommerce_test` DB (see
 tests/conftest.py). The model itself (`ml/model.joblib`) is the real
 trained artifact — nothing here mocks the model, only the DB it reads

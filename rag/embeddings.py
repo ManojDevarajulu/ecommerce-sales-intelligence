@@ -1,5 +1,5 @@
 """
-rag/embeddings.py — T137: embedding generation for the RAG knowledge base.
+rag/embeddings.py — embedding generation for the RAG knowledge base.
 
 One job: turn text into vectors, using the Qwen3-Embedding-0.6B model served
 by an Ollama instance (`OLLAMA_BASE_URL`, reached over Tailscale in local
@@ -8,11 +8,11 @@ dev). Used at ingest time (rag/ingest.py, every chunk) and at query time
 documents and queries are always embedded by the same model; mixing models
 makes the stored vectors silently meaningless.
 
-Why Ollama rather than the two obvious alternatives (INTERVIEW_PREP.md
-2026-09-13): a locally downloaded sentence-transformers model needs a ~1.2GB
-download on every machine that runs ingest or the API; OpenRouter's free
-embedding endpoint works but shares a 50-requests/day cap with the
-generation calls, which ingest + a live demo would exhaust.
+Why Ollama rather than the two obvious alternatives: a locally downloaded
+sentence-transformers model needs a ~1.2GB download on every machine that
+runs ingest or the API, and OpenRouter's free embedding endpoint shares a
+50-requests/day cap with the generation calls, which one ingest plus a
+live demo would exhaust.
 
 Unlike app/services/openrouter.py this module deliberately does NOT fall
 back on failure. There is no meaningful "deterministic fallback" for an

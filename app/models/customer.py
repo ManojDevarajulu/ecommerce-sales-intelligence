@@ -1,5 +1,5 @@
 """
-app/models/customer.py — T058: SQLAlchemy model for the `customers` table.
+app/models/customer.py — SQLAlchemy model for the `customers` table.
 
 Mirrors `sql/01_schema.sql` column-for-column; that file is the schema's
 source of truth, this model exists for querying/CRUD only.

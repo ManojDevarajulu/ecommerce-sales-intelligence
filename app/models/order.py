@@ -1,5 +1,5 @@
 """
-app/models/order.py — T060: SQLAlchemy model for the `orders` table.
+app/models/order.py — SQLAlchemy model for the `orders` table.
 
 Mirrors `sql/01_schema.sql` column-for-column — the same explicit 35-column
 set used by `app/db/seed.py`'s `ORDERS_COLS` (the source CSV also carries
@@ -42,7 +42,7 @@ class Order(Base):
 
     order_id: Mapped[str] = mapped_column(String(32), primary_key=True)
     # RESTRICT, not CASCADE: deleting a customer with order history must be
-    # blocked (T071's 409), never silently wipe their orders.
+    # blocked with a 409, never silently wipe their orders.
     customer_id: Mapped[str] = mapped_column(
         String(32), ForeignKey("customers.customer_id", ondelete="RESTRICT"), nullable=False
     )

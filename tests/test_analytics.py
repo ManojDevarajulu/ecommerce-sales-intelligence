@@ -1,5 +1,5 @@
 """
-tests/test_analytics.py — T155: response-shape test for `/analytics/sales`
+tests/test_analytics.py — response-shape tests for `/analytics/sales`
 (app/api/analytics.py), against the isolated `ecommerce_test` DB (see
 tests/conftest.py).
 """

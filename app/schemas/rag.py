@@ -1,5 +1,5 @@
 """
-app/schemas/rag.py — T142/T143: request/response schemas for POST /ai/rag/query.
+app/schemas/rag.py — request/response schemas for POST /ai/rag/query.
 
 The response always carries `sources` next to `answer` (same principle as
 the reports keeping `stats` next to `narrative`): every citation is a real

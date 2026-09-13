@@ -1,10 +1,10 @@
 """
-ml/predict.py — T110/T111: load the trained model, transform a raw order
-into the model's feature space, predict a return probability, and attach a
+ml/predict.py — load the trained model, transform a raw order into the
+model's feature space, predict a return probability, and attach a
 lightweight rule-based "contributing factors" explanation.
 
-This module is imported by `app/api/ml.py` (T113), not run directly — it
-has no `if __name__ == "__main__"` block.
+Imported by `app/api/ml.py`, not run directly — it has no
+`if __name__ == "__main__"` block.
 
 Model + metadata are loaded ONCE at import time (module-level globals), not
 per-request — `joblib.load`/reading `metadata.json` on every request would
@@ -56,12 +56,12 @@ CATEGORY_RISK_MARGIN = 0.003
 
 
 # ----------------------------------------------------------------------------
-# T110 — load model, transform input, predict + probability
+# Model loading, input transformation, and prediction
 # ----------------------------------------------------------------------------
 def _get_customer_segment(db: Session, customer_id: str) -> str:
     """Look up the customer's segment - not something a checkout request
     should have to supply itself, since it's a stored customer attribute,
-    not an order attribute (same reasoning as T099's training-side merge).
+    not an order attribute, and the model was trained on it the same way.
     """
     row = db.execute(
         text("SELECT customer_segment FROM customers WHERE customer_id = :customer_id"),
@@ -71,16 +71,17 @@ def _get_customer_segment(db: Session, customer_id: str) -> str:
 
 
 def _get_customer_history(db: Session, customer_id: str) -> tuple[int, float, int]:
-    """Point-in-time customer history, computed the same way as T100's
-    training-time recomputation - but simpler here: since this order hasn't
-    been placed/recorded yet, EVERY existing row for this customer_id in
-    `orders` is, by definition, prior history as of right now. No date
-    filter needed (unlike T100's cumcount/cumsum over historical rows that
-    all already existed).
+    """Point-in-time customer history, matching how the training features
+    were built.
 
-    A `customer_id` with no rows yet (brand-new customer) is not an error -
-    it correctly yields (0, 0.0, 0), the same "first order" state T100
-    verified for every customer's actual first order.
+    Simpler here than at training time: this order hasn't been placed yet,
+    so every existing row for this `customer_id` is by definition prior
+    history as of right now — no date filter is needed, unlike the
+    cumulative counts computed over rows that all already existed.
+
+    A `customer_id` with no rows yet (a brand-new customer) is not an
+    error; it correctly yields (0, 0.0, 0), the same "first order" state
+    every customer had on their own first order in training.
     """
     row = db.execute(
         text(
@@ -97,7 +98,7 @@ def build_feature_row(order: dict[str, Any], db: Session) -> pd.DataFrame:
     """Turn one raw order (the API request body, as a plain dict) into a
     single-row DataFrame in the model's tree-format - same column order,
     same `category` dtype with the same trained category vocabulary
-    (T107's `categorical_categories`) as training, so the model reads
+    (`categorical_categories` in the saved metadata) as training, so the model reads
     categories identically at serve time as it did at fit time.
     """
     # Pydantic's gt=0 already rejects this at the API layer; kept as a guard
@@ -109,10 +110,10 @@ def build_feature_row(order: dict[str, Any], db: Session) -> pd.DataFrame:
     customer_segment = _get_customer_segment(db, order["customer_id"])
 
     # No discount_ratio: it was a target leak (discount_amount == 0 for
-    # every returned/cancelled order in this dataset) and was removed from
-    # the model - see ml/train.py's T096 block. The request schema does not
-    # accept a discount field at all, so a caller can't accidentally think
-    # it influences the prediction.
+    # every returned or cancelled order in this dataset) and was removed
+    # from the model - see the leakage audit in ml/train.py. The request
+    # schema does not accept a discount field at all, so a caller cannot
+    # mistakenly believe it influences the prediction.
     row = {
         "shipping_ratio": order["shipping_cost"] / order["gross_sales"],
         "sales_channel": order["sales_channel"],
@@ -127,10 +128,10 @@ def build_feature_row(order: dict[str, Any], db: Session) -> pd.DataFrame:
     }
     X = pd.DataFrame([row], columns=FEATURE_COLUMNS)
 
-    # Pin each categorical column to the EXACT trained category order
-    # (T107's rationale) - not a plain `.astype("category")`, which would
-    # let pandas infer categories from this single request row alone and
-    # silently assign different internal codes than training used.
+    # Pin each categorical column to the EXACT trained category order - not
+    # a plain `.astype("category")`, which would let pandas infer categories
+    # from this single request row alone and silently assign different
+    # internal codes than training used, quietly corrupting the prediction.
     for col in CATEGORICAL_FEATURES:
         X[col] = pd.Categorical(X[col], categories=CATEGORICAL_CATEGORIES[col])
         if X[col].isna().any():
@@ -143,7 +144,7 @@ def build_feature_row(order: dict[str, Any], db: Session) -> pd.DataFrame:
 
 def predict_return_probability(order: dict[str, Any], db: Session) -> tuple[float, pd.DataFrame]:
     """Returns (probability of return, the feature row used) - the feature
-    row is returned alongside so T111's heuristic can inspect the same
+    row is returned alongside so the explanation heuristic can inspect the same
     values just fed to the model, instead of recomputing them a second
     time.
     """
@@ -153,17 +154,17 @@ def predict_return_probability(order: dict[str, Any], db: Session) -> tuple[floa
 
 
 # ----------------------------------------------------------------------------
-# T111 — rule-based "contributing factors" heuristic (not SHAP)
+# Rule-based "contributing factors" heuristic (deliberately not SHAP)
 # ----------------------------------------------------------------------------
-# Deliberately not SHAP/coefficient-based (SCOPE.md: "not SHAP - not worth
-# the dependency/time here"). Every factor below is grounded in a real
+# Deliberately not SHAP or coefficient-based: the extra dependency is not
+# justified for a model this weak. Every factor below is grounded in a real
 # number from `risk_reference_stats` (computed from the TRAIN split only in
-# ml/train.py's T107 section) - never a hand-picked, unverified threshold -
+# ml/train.py) - never a hand-picked, unverified threshold -
 # and states the actual percentages so the claimed effect size is visible,
 # not just asserted. This is why it's a heuristic and not a model
 # explanation: it works identically regardless of which model (LR, HGB,
 # RandomForest, or XGBoost - the final choice as of 2026-09-13, see
-# ml/train.py's T106) is actually deployed, so a model swap needs no
+# ml/train.py) is actually deployed, so a model swap needs no
 # changes here - already proven true once, when the final model changed
 # from HGB to XGBoost and this file needed zero edits.
 def explain_contributing_factors(X: pd.DataFrame) -> list[str]:

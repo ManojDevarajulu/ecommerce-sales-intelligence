@@ -1,5 +1,5 @@
 """
-app/schemas/pagination.py — T066: shared pagination helper used by every
+app/schemas/pagination.py — shared pagination helper used by every
 list endpoint (customers, products, orders, and later the analytics routes).
 """
 from typing import Generic, TypeVar

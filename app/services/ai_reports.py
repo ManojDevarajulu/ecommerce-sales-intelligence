@@ -1,16 +1,19 @@
 """
-app/services/ai_reports.py — T118/T121/T124: deterministic stats aggregators
-for the 3 OpenRouter reports, plus each report's prompt template and
-deterministic-fallback narrative (T117's per-report half - the generic
-call/parse/validate machinery lives in app/services/openrouter.py).
+app/services/ai_reports.py — deterministic statistics for the three
+OpenRouter reports, plus each report's prompt template and its
+deterministic fallback narrative.
 
-Orders/ratings stats reuse the same raw-SQL-via-`run_query` pattern as
-`app/api/analytics.py` (T085-T090) - these are the same kind of aggregate
-query, just consumed by an LLM prompt instead of returned directly. RFM
-(T124) is genuinely a per-customer statistical computation (quintile
-scoring), which pandas handles far more directly than hand-rolled SQL
-window functions would - the same tool choice `ml/train.py` already made
-for comparable statistical work.
+The division of labour across the two service modules: everything here is
+report-specific (which numbers to compute, how to phrase them, what to say
+if the LLM is unavailable), while the generic call/parse/validate
+machinery lives in `app/services/openrouter.py`.
+
+Orders and ratings stats reuse the same raw-SQL-via-`run_query` pattern as
+`app/api/analytics.py` — they are the same kind of aggregate query, just
+consumed by an LLM prompt instead of returned to a caller. RFM is the
+exception: quintile scoring is a per-customer statistical computation that
+pandas expresses far more directly than hand-rolled SQL window functions,
+the same tool choice already made for comparable work in `ml/train.py`.
 """
 from datetime import date
 
@@ -31,7 +34,7 @@ from app.schemas.ai_reports import ReportNarrative
 from app.services.analytics import optional_where, run_query
 
 # ----------------------------------------------------------------------------
-# T118 — orders report: deterministic stats aggregator
+# Orders report: deterministic stats aggregator
 # ----------------------------------------------------------------------------
 def compute_orders_stats(db: Session, date_from: date | None, date_to: date | None) -> OrdersStats:
     where_sql, params = optional_where(
@@ -149,7 +152,7 @@ def orders_report_fallback(stats: OrdersStats) -> ReportNarrative:
 
 
 # ----------------------------------------------------------------------------
-# T121 — ratings report: deterministic stats aggregator
+# Ratings report: deterministic stats aggregator
 # ----------------------------------------------------------------------------
 def compute_ratings_stats(db: Session, date_from: date | None, date_to: date | None) -> RatingsStats:
     order_where_sql, order_params = optional_where(
@@ -256,7 +259,7 @@ def ratings_report_fallback(stats: RatingsStats) -> ReportNarrative:
 
 
 # ----------------------------------------------------------------------------
-# T124 — customer segmentation report: RFM computation
+# Customer segmentation report: RFM computation
 # ----------------------------------------------------------------------------
 # Recency/Frequency/Monetary per customer, scored into quintiles (1=worst,
 # 5=best on each dimension) and combined into a small set of standard,
@@ -304,10 +307,11 @@ def compute_rfm_and_segments() -> SegmentsStats:
     # so days must be ranked with the biggest values first). Frequency/
     # monetary need the opposite (`ascending=True`: smallest raw value ->
     # rank 1, so the biggest count/spend gets the largest rank -> score 5).
-    # Verified directly (not just reasoned through) with a toy series
-    # before trusting this on the real data - see INTERVIEW_PREP.md
-    # 2026-09-13 for the bug this fixes (Champions had the WORST average
-    # recency and Lost/At Risk had the BEST, an inverted first attempt).
+    # This direction was verified against a toy series before being trusted
+    # on real data, rather than just reasoned through: a first attempt had
+    # the ranking inverted, which produced Champions with the WORST average
+    # recency and Lost/At Risk with the best - plausible-looking output that
+    # was exactly backwards.
     def score(series: pd.Series, ascending: bool) -> pd.Series:
         ranks = series.rank(method="first", ascending=ascending)
         return pd.qcut(ranks, 5, labels=[1, 2, 3, 4, 5]).astype(int)

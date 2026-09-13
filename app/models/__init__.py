@@ -1,5 +1,5 @@
 """
-app/models/ — SQLAlchemy models, one module per table (T058-T062).
+app/models/ — SQLAlchemy models, one module per table.
 
 Every model must be imported here so it registers on the shared `Base`
 before any relationship or `Base.metadata` call needs to resolve it.

@@ -1,5 +1,5 @@
 """
-tests/test_customers.py — T152-T154: CRUD tests for `/customers`
+tests/test_customers.py — CRUD tests for `/customers`
 (app/api/customers.py), against the isolated `ecommerce_test` DB (see
 tests/conftest.py).
 """
@@ -27,7 +27,7 @@ def _new_customer_payload(customer_id: str = NEW_CUSTOMER_ID) -> dict:
     }
 
 
-# ---------------------------------------------------------------- T152 ----
+# ------------------------------------------------------- create + validate
 def test_create_customer_returns_201_with_persisted_data(client):
     """POST /customers — the response echoes back the same fields that were
     sent, plus server-assigned ones (created_at), and a follow-up GET on the
@@ -54,9 +54,9 @@ def test_create_customer_returns_201_with_persisted_data(client):
 
 
 def test_create_customer_rejects_invalid_input_with_422(client):
-    """Sanity check on the "validate" half of T152: a payload missing the
-    required `region` field (no DB default — NOT NULL, no CHECK fallback)
-    never reaches Postgres at all."""
+    """The validation half: a payload missing the required `region` field
+    (NOT NULL with no default) is rejected by Pydantic and never reaches
+    Postgres at all."""
     payload = _new_customer_payload("CUST-TEST-INVALID")
     del payload["region"]
 
@@ -76,7 +76,7 @@ def test_create_duplicate_customer_id_returns_409(client):
     assert second.status_code == 409
 
 
-# ---------------------------------------------------------------- T153 ----
+# --------------------------------------------------- not-found behaviour
 def test_get_missing_customer_returns_404(client):
     resp = client.get(f"/customers/{MISSING_CUSTOMER_ID}")
     assert resp.status_code == 404
@@ -93,7 +93,7 @@ def test_delete_missing_customer_returns_404(client):
     assert resp.status_code == 404
 
 
-# ---------------------------------------------------------------- T154 ----
+# ------------------------------------------------ delete blocked by an FK
 def test_delete_customer_with_orders_returns_409(client, db_session):
     """A customer referenced by `orders.customer_id` (ON DELETE RESTRICT,
     sql/01_schema.sql) cannot be deleted — Postgres raises a

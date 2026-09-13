@@ -1,11 +1,12 @@
 """
-app/api/ai.py — T120/T123/T126: the 3 OpenRouter business report endpoints,
-and T143: the RAG assistant endpoint.
+app/api/ai.py — the three OpenRouter business report endpoints and the RAG
+assistant endpoint.
 
-All POST (not GET) even though nothing is created/mutated - SCOPE.md's own
-naming (`POST /ai/reports/...`, `POST /ai/rag/query`) reflects that these
-trigger a real external LLM call (a side-effecting, non-idempotent-cost
-action), unlike the analytics endpoints' pure-DB reads.
+All four are POST even though none of them create or mutate a resource.
+That is deliberate: each one triggers a real external LLM call, which
+costs quota and is not free to repeat, unlike the analytics endpoints'
+pure database reads. Modelling them as GETs would invite caching and
+naive retries against a rate-limited third-party API.
 """
 from datetime import date
 
@@ -40,7 +41,8 @@ def orders_report(
     date_to: date | None = Query(None, description="order_date <= this date"),
     db: Session = Depends(get_db),
 ) -> OrdersReportResponse:
-    """T120."""
+    """Order analysis report: sales performance, trends, top categories and
+    regions, with an LLM-written narrative over deterministic figures."""
     stats = compute_orders_stats(db, date_from, date_to)
     narrative, meta = generate_narrative(orders_report_prompt(stats), orders_report_fallback(stats))
     return OrdersReportResponse(stats=stats, narrative=narrative, meta=meta)
@@ -52,7 +54,8 @@ def customer_ratings_report(
     date_to: date | None = Query(None, description="order_date <= this date"),
     db: Session = Depends(get_db),
 ) -> RatingsReportResponse:
-    """T123."""
+    """Customer rating report: rating distribution and the categories with
+    the highest and lowest return rates, narrated by the LLM."""
     stats = compute_ratings_stats(db, date_from, date_to)
     narrative, meta = generate_narrative(ratings_report_prompt(stats), ratings_report_fallback(stats))
     return RatingsReportResponse(stats=stats, narrative=narrative, meta=meta)
@@ -60,12 +63,16 @@ def customer_ratings_report(
 
 @router.post("/customer-segments", response_model=SegmentsReportResponse)
 def customer_segments_report() -> SegmentsReportResponse:
-    """T126. No date filters - unlike the other two reports, RFM recency is
-    inherently relative to the dataset's own max(order_date) (T124), so a
-    date-windowed version wouldn't mean what a caller would expect it to.
-    No `db: Session` dependency either - `compute_rfm_and_segments()` uses
-    the shared engine directly via pandas (see app/services/ai_reports.py),
-    the same tool choice `ml/train.py` made for equivalent statistical work.
+    """RFM customer segmentation report.
+
+    No date filters, unlike the other two reports: recency is measured
+    against the dataset's own latest order date, so a date-windowed version
+    would quietly redefine what "recent" means and mislead the caller.
+
+    No `db: Session` dependency either — `compute_rfm_and_segments()` runs
+    a single dataset-wide aggregation through pandas on the shared engine
+    rather than a request-scoped ORM session, the same tool choice made for
+    the equivalent statistical work in `ml/train.py`.
     """
     stats = compute_rfm_and_segments()
     narrative, meta = generate_narrative(segments_report_prompt(stats), segments_report_fallback(stats))
@@ -74,13 +81,18 @@ def customer_segments_report() -> SegmentsReportResponse:
 
 @rag_router.post("/query", response_model=RagQueryResponse)
 def rag_query(body: RagQueryRequest, db: Session = Depends(get_db)) -> RagQueryResponse:
-    """T143. Grounded Q&A over rag/documents (see app/services/rag.py for
-    the three outcomes). Status codes: a question the knowledge base can't
-    answer is still a successful request - it returns 200 with
-    `answered: false` and an "insufficient data" message, not a 404 (nothing
-    was "not found"; the guard worked). The one error path is the embedding
-    server being unreachable: without a question vector nothing downstream
-    can run, so that is a 503 - a dependency outage, not a client mistake.
+    """Grounded Q&A over the knowledge base in `rag/documents/`.
+
+    See `app/services/rag.py` for the three possible outcomes. On status
+    codes: a question the knowledge base cannot answer is still a
+    successful request — it returns 200 with `answered: false` and an
+    "insufficient data" message, not a 404. Nothing was "not found"; the
+    hallucination guard did its job, and a 4xx would make correct
+    behaviour look like an error to the caller.
+
+    The single error path is the embedding service being unreachable.
+    Without a question vector nothing downstream can run, and that is a
+    dependency outage rather than a client mistake, so it maps to 503.
     """
     try:
         return answer_question(body.question, db, top_k=body.top_k)

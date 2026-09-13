@@ -1,5 +1,5 @@
 """
-app/models/rating.py — T062: SQLAlchemy model for the `ratings` table.
+app/models/rating.py — SQLAlchemy model for the `ratings` table.
 
 Mirrors `sql/01_schema.sql` column-for-column. Split from `orders` (see
 `docs/ER_DIAGRAM.md`) since 24,557 of 138,116 orders were never delivered

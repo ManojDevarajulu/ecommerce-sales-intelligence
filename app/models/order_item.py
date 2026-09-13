@@ -1,5 +1,5 @@
 """
-app/models/order_item.py — T061: SQLAlchemy model for the `order_items` table.
+app/models/order_item.py — SQLAlchemy model for the `order_items` table.
 
 Mirrors `sql/01_schema.sql` column-for-column; that file is the schema's
 source of truth, this model exists for querying/CRUD only.
@@ -34,7 +34,7 @@ class OrderItem(Base):
         String(32), ForeignKey("orders.order_id", ondelete="CASCADE"), nullable=False
     )
     # RESTRICT, not CASCADE: a product with order history can't be deleted
-    # out from under it — T076's 409.
+    # out from under it — the delete is refused with a 409.
     product_id: Mapped[str] = mapped_column(
         String(32), ForeignKey("products.product_id", ondelete="RESTRICT"), nullable=False
     )

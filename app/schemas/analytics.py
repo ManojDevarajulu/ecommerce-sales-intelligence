@@ -1,6 +1,6 @@
 """
 app/schemas/analytics.py — typed response models for the 6 analytics
-endpoints (T085-T090), add-on alongside them.
+endpoints.
 
 Row shapes mirror `sql/02_analytics_queries.sql`'s columns exactly (same
 query, just executed through `app/services/analytics.py` with optional

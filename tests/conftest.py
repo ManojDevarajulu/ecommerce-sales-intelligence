@@ -1,8 +1,8 @@
 """
-tests/conftest.py — T151: shared pytest fixtures for the API test suite.
+tests/conftest.py — shared pytest fixtures for the API test suite.
 
-DB isolation strategy (approved 2026-09-13, see INTERVIEW_PREP.md): a
-second, throwaway Postgres database — `ecommerce_test` — on the same
+DB isolation strategy: a second, throwaway Postgres database —
+`ecommerce_test` — on the same
 running container as the dev DB (docker-compose's `ecommerce_db`, host
 port 5435; see docker-compose.yml). It is dropped and recreated fresh at
 the start of the test session, built from the real `sql/01_schema.sql`
@@ -10,7 +10,7 @@ the start of the test session, built from the real `sql/01_schema.sql`
 loaded once from a small, deterministic sample of the real CSVs under
 `data/dataset/` — real SQL and real data shape, without the ~140k-row
 load time of the full dataset on every test run. Rejected alternatives
-(transaction-rollback-per-test, mocking the DB) are in INTERVIEW_PREP.md.
+(transaction-rollback-per-test, mocking the DB) are described below.
 
 Sampling (`_load_sample_data` below): `SAMPLE_ORDERS` rows are drawn from
 the main sales CSV with a fixed `random_state` (reproducible across runs),
@@ -22,17 +22,16 @@ top so pagination/listing tests have more than one page to work with.
 
 Isolation is at the database level, not per-test: tests share the one
 loaded dataset for the session. This matches how the app is actually used
-(read-mostly analytics/ML/RAG) and keeps the fixture simple — later tests
-that mutate data (e.g. the T152-154 customer CRUD tests) are expected to
-use their own throwaway ids / assert non-destructively rather than rely on
-per-test rollback.
+(read-mostly analytics/ML/RAG) and keeps the fixture simple — the tests
+that mutate data (the customer CRUD ones) use their own throwaway ids and
+assert non-destructively rather than relying on per-test rollback.
 
 Known gap: `POST /ai/reports/customer-segments` (app/api/ai.py) takes no
 `db: Session = Depends(get_db)` at all — `compute_rfm_and_segments()`
 reads via the app's *real* engine/SessionLocal directly (see that
 endpoint's own docstring). The `client` fixture's dependency override
 below does NOT redirect that one endpoint to the test DB. Not exercised
-by T151-159 (no task tests it), but worth knowing before ever adding one.
+by any test here, but worth knowing before ever adding one.
 """
 from collections.abc import Generator, Iterator
 from pathlib import Path

@@ -7,7 +7,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- ----------------------------------------------------------------------------
--- 1. Customers Table (Dimension) - Task T029
+-- 1. Customers Table (Dimension)
 -- ----------------------------------------------------------------------------
 -- Stores 25,000 unique customer profiles with demographic and geographic data.
 -- ----------------------------------------------------------------------------
@@ -33,7 +33,7 @@ CREATE INDEX idx_customers_region ON customers(region);
 CREATE INDEX idx_customers_segment ON customers(customer_segment);
 
 -- ----------------------------------------------------------------------------
--- 2. Products Table (Dimension) - Task T030
+-- 2. Products Table (Dimension)
 -- ----------------------------------------------------------------------------
 -- Stores 1,175 distinct product SKUs across 15 retail categories.
 -- ----------------------------------------------------------------------------
@@ -57,7 +57,7 @@ CREATE INDEX idx_products_category ON products(product_category);
 CREATE INDEX idx_products_brand ON products(brand);
 
 -- ----------------------------------------------------------------------------
--- 3. Orders Table (Financial Fact Table) - Task T031
+-- 3. Orders Table (Financial Fact Table)
 -- ----------------------------------------------------------------------------
 -- Stores 138,116 commercial transactions with order-level financial metrics,
 -- fulfillment states, and customer snapshot attributes at order time.
@@ -114,7 +114,7 @@ CREATE INDEX idx_orders_sales_channel ON orders(sales_channel);
 CREATE INDEX idx_orders_marketing_channel ON orders(marketing_channel);
 
 -- ----------------------------------------------------------------------------
--- 4. Order Items Table (Transaction Line Items) - Task T032
+-- 4. Order Items Table (Transaction Line Items)
 -- ----------------------------------------------------------------------------
 -- Stores 397,569 line-item records (~2.88 items per basket) linking orders
 -- to individual catalog SKUs with unit-level pricing and discounts.
@@ -144,7 +144,7 @@ CREATE INDEX idx_order_items_product_id ON order_items(product_id);
 CREATE INDEX idx_order_items_composite ON order_items(order_id, product_id);
 
 -- ----------------------------------------------------------------------------
--- 5. Ratings / Reviews Table (Entity Normalization) - Task T033
+-- 5. Ratings / Reviews Table (Entity Normalization)
 -- ----------------------------------------------------------------------------
 -- Normalized review entity storing 113,559 post-delivery ratings and sentiments.
 -- Decoupled from orders to eliminate sparse nulls for the 24,557 unfulfilled orders.
@@ -168,16 +168,15 @@ CREATE INDEX idx_ratings_rating ON ratings(rating);
 CREATE INDEX idx_ratings_sentiment ON ratings(review_sentiment);
 
 -- ----------------------------------------------------------------------------
--- 6. RAG Chunks Table (Vector Store Foundation) - Task T034
+-- 6. RAG Chunks Table (Vector Store Foundation)
 -- ----------------------------------------------------------------------------
--- Vector storage for the Phase 8 knowledge base (rag/ingest.py). One row per
+-- Vector storage for the RAG knowledge base (rag/ingest.py). One row per
 -- `##` section of a rag/documents/*.md file.
 -- Embedding dimension = 1024, matching EMBEDDING_MODEL=qwen3-embedding:0.6b
--- (Qwen3-Embedding-0.6B) served by Ollama - see .env.example. Originally
--- provisioned as vector(384) for all-MiniLM-L6-v2 (T034); changed 2026-09-13
--- before any rows were loaded. Note pgvector's HNSW index rejects columns
--- wider than 2000 dims, so the larger Qwen3-Embedding sizes (2560/4096) can't
--- be used here without dropping the index.
+-- (Qwen3-Embedding-0.6B) served by Ollama - see .env.example. Note that
+-- pgvector's HNSW index rejects columns wider than 2000 dimensions, which
+-- is why the larger Qwen3-Embedding sizes (2560/4096) are not an option
+-- here without giving up the index.
 -- ----------------------------------------------------------------------------
 DROP TABLE IF EXISTS rag_chunks CASCADE;
 

@@ -1,12 +1,12 @@
 """
-tests/test_rag.py — T157: tests for `POST /ai/rag/query` (app/api/ai.py /
+tests/test_rag.py — tests for `POST /ai/rag/query` (app/api/ai.py /
 app/services/rag.py), against the isolated `ecommerce_test` DB (see
 tests/conftest.py).
 
 Both the embedding call (rag/embeddings.py, real Ollama over the network)
 and the generation call (app/services/openrouter.py, real OpenRouter) are
-monkeypatched here — the same approach used to manually verify T143/T145
-(see INTERVIEW_PREP.md), now automated. This keeps the suite fast,
+monkeypatched here — the same approach used to verify these paths by hand
+during development, now automated. That keeps the suite fast,
 deterministic, and runnable with no network access / API key, and lets the
 similarity score be pinned exactly rather than hoping a real embedding
 model happens to land on either side of the 0.40 threshold. What's real:

@@ -1,11 +1,10 @@
 """
-app/schemas/ai_reports.py — T119/T122/T125: request/response schemas for the
-3 OpenRouter business reports.
+app/schemas/ai_reports.py — response schemas for the three OpenRouter
+business reports.
 
 `ReportNarrative` is the one piece of every report that actually comes from
-the LLM (or the deterministic fallback, T117, which fills the identical
-shape) — every other field is deterministic SQL/Python (SCOPE.md's locked
-rule for this phase). Keeping `stats` alongside `narrative` in every
+the LLM (or the deterministic fallback, which fills the identical shape)
+— every other field is computed by deterministic SQL/Python. Keeping `stats` alongside `narrative` in every
 response (not narrative alone) means the real numbers are sitting right
 next to the LLM's prose, so a mismatch is checkable, not just asserted.
 """
@@ -16,7 +15,7 @@ from pydantic import BaseModel, Field
 
 
 class ReportNarrative(BaseModel):
-    """What the LLM (or T117's deterministic fallback) produces — never the
+    """What the LLM (or the deterministic fallback) produces — never the
     numbers themselves, only synthesis over numbers already computed."""
 
     summary: str = Field(..., description="1-2 sentence executive summary")

@@ -1,5 +1,5 @@
 """
-app/schemas/order.py — T065: Pydantic schemas for the `orders` resource.
+app/schemas/order.py — Pydantic schemas for the `orders` resource.
 
 Field set mirrors `app/models/order.py` / `sql/01_schema.sql` exactly (the
 same explicit 35-column set as `app/db/seed.py`'s `ORDERS_COLS` — the source
@@ -46,7 +46,7 @@ class OrderBase(BaseModel):
     estimated_delivery_days: Decimal | None = Field(None, ge=0, max_digits=6, decimal_places=2)
     delivery_status: DeliveryStatus
     # This dataset only ever sets return_status to 'Returned' or leaves it
-    # NULL (see SCOPE.md) — not a general free-text status field.
+    # NULL — not a general free-text status field.
     return_status: Literal["Returned"] | None = None
     return_reason: str | None = Field(None, max_length=255)
     marketing_channel: MarketingChannel | None = None

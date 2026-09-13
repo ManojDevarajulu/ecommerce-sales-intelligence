@@ -1,6 +1,6 @@
 # Model Card — Order Return Prediction
 
-_Auto-generated from training metadata on 2026-09-13T08:36:14.282197+00:00 (scikit-learn 1.5.2). Do not hand-edit — regenerate via `python -m ml.train`._
+_Auto-generated from training metadata on 2026-09-13T17:09:20.542508+00:00 (scikit-learn 1.5.2). Do not hand-edit — regenerate via `python -m ml.train`._
 
 ## Problem
 Order Return Prediction (binary classification: order_status == 'Returned')
@@ -21,10 +21,10 @@ A random split was rejected in favor of this one: it would leak future informati
 - **Binary** (1): is_repeat_customer_asof
 
 ### Deliberately excluded (and why)
-- **`discount_ratio`** — TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found at T114, removed; every metric here is from the leak-free retrain.
-- **`delivery_days / estimated_delivery_days / delivery_status`** — NULL/'Cancelled' for 100% of returned orders - leaks the outcome (T098).
-- **`ratings.*`** — 0 of 9,462 returned orders ever have a rating, by construction (T093).
-- **`customer_lifetime_value / customer_order_count / is_repeat_customer (raw)`** — lifetime aggregates, not point-in-time snapshots (T100); recomputed as-of-order instead.
+- **`discount_ratio`** — TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found during API smoke testing, removed; every metric here is from the leak-free retrain.
+- **`delivery_days / estimated_delivery_days / delivery_status`** — NULL/'Cancelled' for 100% of returned orders - leaks the outcome.
+- **`ratings.*`** — 0 of 9,462 returned orders ever have a rating, by construction.
+- **`customer_lifetime_value / customer_order_count / is_repeat_customer (raw)`** — lifetime aggregates, not point-in-time snapshots; recomputed as-of-order instead.
 - **`payment_status`** — 'Refunded' <=> Returned - a post-outcome field, never a candidate.
 
 A per-feature leakage audit now runs in `train.py` before any model is fit: no single value (categorical) or decile (numeric) of any feature may pin the return rate to exactly 0% or 100%. It was added after `discount_ratio` passed every earlier check (nulls, ranges, cardinality) while being an almost-deterministic proxy for the outcome.
@@ -68,7 +68,7 @@ Confusion matrix (final model, 0.5 threshold): TN=12,812, FP=12,814, FN=890, TP=
 ![Confusion Matrix](plots/confusion_matrix.png)
 
 ## Overfitting check
-Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further. Full detail in INTERVIEW_PREP.md 2026-09-13.
+Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/max_leaf_nodes=15 (vs. defaults 0/31) halved its gap (0.0134 -> 0.0064); XGBoost's max_depth=2/learning_rate=0.03/reg_lambda=5.0/min_child_weight=150 (vs. an initial default-ish fit with gap 0.0735) brought its gap to -0.0013 (test slightly exceeds train) while matching the best test PR-AUC seen across every variant tried. Random Forest was NOT regularization-rescued the same way - its gap (0.1050) was the reason it was rejected, not tuned further.
 
 | | Train PR-AUC | Test PR-AUC | Gap |
 |---|---|---|---|
