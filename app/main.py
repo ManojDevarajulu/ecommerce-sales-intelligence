@@ -3,7 +3,7 @@ app/main.py — T082: FastAPI application entrypoint. Registers every router.
 """
 from fastapi import FastAPI
 
-from app.api.ai import router as ai_router
+from app.api.ai import rag_router, router as ai_router
 from app.api.analytics import router as analytics_router
 from app.api.customers import router as customers_router
 from app.api.ml import router as ml_router
@@ -22,6 +22,7 @@ app.include_router(orders_router)
 app.include_router(analytics_router)
 app.include_router(ml_router)
 app.include_router(ai_router)
+app.include_router(rag_router)
 
 
 @app.get("/health", tags=["meta"])

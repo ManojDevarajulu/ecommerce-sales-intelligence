@@ -23,8 +23,10 @@ xgboost==3.4.1  # added 2026-09-13: tried alongside HistGradientBoostingClassifi
                 # variant became the final model.
 
 # --- LLM / RAG ---
+# Embeddings are served by an Ollama instance (rag/embeddings.py, plain HTTP via
+# httpx) - sentence-transformers (and its torch dependency, ~2 GB) removed
+# 2026-09-13 after the switch; see SCOPE.md change log.
 httpx==0.27.2
-sentence-transformers==3.1.1
 tiktoken==0.8.0
 
 # --- Utilities ---

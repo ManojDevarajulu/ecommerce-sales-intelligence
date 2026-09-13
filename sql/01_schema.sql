@@ -170,7 +170,14 @@ CREATE INDEX idx_ratings_sentiment ON ratings(review_sentiment);
 -- ----------------------------------------------------------------------------
 -- 6. RAG Chunks Table (Vector Store Foundation) - Task T034
 -- ----------------------------------------------------------------------------
--- Pre-provisioned vector storage for Phase 8 knowledge base embeddings (all-MiniLM-L6-v2).
+-- Vector storage for the Phase 8 knowledge base (rag/ingest.py). One row per
+-- `##` section of a rag/documents/*.md file.
+-- Embedding dimension = 1024, matching EMBEDDING_MODEL=qwen3-embedding:0.6b
+-- (Qwen3-Embedding-0.6B) served by Ollama - see .env.example. Originally
+-- provisioned as vector(384) for all-MiniLM-L6-v2 (T034); changed 2026-09-13
+-- before any rows were loaded. Note pgvector's HNSW index rejects columns
+-- wider than 2000 dims, so the larger Qwen3-Embedding sizes (2560/4096) can't
+-- be used here without dropping the index.
 -- ----------------------------------------------------------------------------
 DROP TABLE IF EXISTS rag_chunks CASCADE;
 
@@ -179,7 +186,7 @@ CREATE TABLE rag_chunks (
     doc_title               VARCHAR(255) NOT NULL,
     section_title           VARCHAR(255),
     chunk_text              TEXT NOT NULL,
-    embedding               vector(384),
+    embedding               vector(1024),
     metadata                JSONB NOT NULL DEFAULT '{}'::jsonb,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

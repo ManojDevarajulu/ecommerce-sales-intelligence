@@ -60,11 +60,19 @@ def _extract_json_object(text: str) -> dict:
     return json.loads(match.group(0))
 
 
-def _call_openrouter_raw(prompt: str) -> str | None:
-    """Returns the raw text content of the model's reply, or None on any
+def chat_completion(prompt: str, temperature: float = 0.3) -> str | None:
+    """The one place the OpenRouter chat API is called - shared by the
+    business reports (T116) and the RAG assistant (T141), so there is one
+    key, one model id and one failure contract to explain.
+
+    Returns the raw text content of the model's reply, or None on any
     failure (no key configured, network error, non-2xx, unexpected shape).
     Never raises - every failure mode here is a "fall back" signal, not a
-    "propagate to the caller" one.
+    "propagate to the caller" one; each caller decides what its fallback is.
+
+    `temperature` defaults to 0.3 for report narratives (low but not 0 - a
+    narrative, not a deterministic calculation); RAG passes 0.1 because a
+    grounded answer should vary as little as possible for the same context.
     """
     if not settings.openrouter_api_key:
         return None
@@ -75,7 +83,7 @@ def _call_openrouter_raw(prompt: str) -> str | None:
             json={
                 "model": settings.openrouter_model,
                 "messages": [{"role": "user", "content": prompt}],
-                "temperature": 0.3,  # low but not 0 - a report narrative, not a deterministic calculation
+                "temperature": temperature,
             },
             timeout=30.0,
         )
@@ -92,7 +100,7 @@ def generate_narrative(prompt: str, fallback: ReportNarrative) -> tuple[ReportNa
     `fallback` is the deterministic ReportNarrative to use if the LLM path
     fails for any reason.
     """
-    raw = _call_openrouter_raw(f"{prompt}\n\n{_NARRATIVE_JSON_INSTRUCTIONS}")
+    raw = chat_completion(f"{prompt}\n\n{_NARRATIVE_JSON_INSTRUCTIONS}")
     if raw is None:
         return fallback, ReportMeta(generated_by="deterministic_fallback", model=None)
 
