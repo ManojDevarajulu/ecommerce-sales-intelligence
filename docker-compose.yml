@@ -8,10 +8,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
       POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
     ports:
-      # Host port 5435 (not 5432) — this machine already runs a native
-      # Postgres service on 5432. Only the host-side mapping changes; the
-      # container and the `app` service still talk to each other on 5432.
-      - "5435:5432"
+      # Exposed on host port 5435 to avoid collisions with default local PostgreSQL instances
+      - "${POSTGRES_PORT_EXTERNAL:-5435}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./sql/00_extensions.sql:/docker-entrypoint-initdb.d/00_extensions.sql

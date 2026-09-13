@@ -18,6 +18,7 @@ Built for the **Piquota Digital Inc** Technical Assessment by **Manoj D**.
 - [Machine Learning Service](#machine-learning-service)
 - [AI Executive Business Reports](#ai-executive-business-reports)
 - [Grounded RAG Assistant](#grounded-rag-assistant)
+- [System Assumptions & Technical Boundaries](#system-assumptions--technical-boundaries)
 - [Automated Testing Suite](#automated-testing-suite)
 
 ---
@@ -366,36 +367,40 @@ The platform provides 35 fully-typed RESTful endpoints organized under `/api/v1/
 |---|---|---|---|
 | **Health** | `GET` | `/health` | Application liveness probe and database connectivity status. |
 | **Chat UI** | `GET` | `/` | Serves the interactive dark-mode RAG assistant web interface. |
-| **Customers** | `POST` | `/api/v1/customers` | Create a new customer profile (enforces duplicate PK checks). |
-| | `GET` | `/api/v1/customers` | List customers with pagination, regional filtering, and sorting. |
-| | `GET` | `/api/v1/customers/{id}` | Retrieve individual customer details (404 if missing). |
-| | `PUT` | `/api/v1/customers/{id}` | Update existing customer demographic attributes. |
-| | `DELETE` | `/api/v1/customers/{id}` | Delete customer (409 Conflict if historical orders exist). |
-| **Products** | `POST` | `/api/v1/products` | Add a new product to the catalog. |
-| | `GET` | `/api/v1/products` | List product catalog with category and price range filters. |
-| | `GET` | `/api/v1/products/{id}` | Retrieve specific product details. |
-| | `PUT` | `/api/v1/products/{id}` | Update product pricing or metadata. |
-| | `DELETE` | `/api/v1/products/{id}` | Remove product (enforces FK integrity). |
-| **Orders** | `POST` | `/api/v1/orders` | Atomic transaction creating order fact and line items. |
-| | `GET` | `/api/v1/orders` | List orders with date range, status, and customer filtering. |
-| | `GET` | `/api/v1/orders/{id}` | Retrieve full order breakdown including nested line items. |
-| **Analytics** | `GET` | `/api/v1/analytics/sales` | Aggregate sales metrics with monthly and yearly rollups. |
-| | `GET` | `/api/v1/analytics/regions` | Regional revenue distribution and fulfillment statistics. |
-| | `GET` | `/api/v1/analytics/categories` | Category revenue, operating margin, and unit volumes. |
-| | `GET` | `/api/v1/analytics/customer-segments` | Live RFM customer distribution and segment summaries. |
-| **Machine Learning**| `POST` | `/api/v1/ml/predict` | Real-time order return risk scoring and contributing factors. |
-| **AI Reports** | `POST` | `/api/v1/ai/reports/orders` | Executive sales performance narrative and trend insights. |
-| | `POST` | `/api/v1/ai/reports/customer-ratings`| Analysis of customer sentiment and review drivers. |
-| | `POST` | `/api/v1/ai/reports/customer-segments`| Strategic RFM segment targeting recommendations. |
-| **RAG Assistant** | `POST` | `/api/v1/ai/rag/query` | Grounded semantic Q&A with citation tracking and guard. |
+| **Customers** | `POST` | `/customers` | Create a new customer profile (enforces duplicate PK checks). |
+| | `GET` | `/customers` | List customers with pagination, regional filtering, and sorting. |
+| | `GET` | `/customers/{id}` | Retrieve individual customer details (404 if missing). |
+| | `PATCH` | `/customers/{id}` | Update existing customer demographic attributes. |
+| | `DELETE` | `/customers/{id}` | Delete customer (409 Conflict if historical orders exist). |
+| **Products** | `POST` | `/products` | Add a new product to the catalog. |
+| | `GET` | `/products` | List product catalog with category and price range filters. |
+| | `GET` | `/products/{id}` | Retrieve specific product details. |
+| | `PATCH` | `/products/{id}` | Update product pricing or metadata. |
+| | `DELETE` | `/products/{id}` | Remove product (enforces FK integrity). |
+| **Orders** | `POST` | `/orders` | Create an order with customer validation. |
+| | `GET` | `/orders` | List orders with date range, status, and customer filtering. |
+| | `GET` | `/orders/{id}` | Retrieve full order details including line items. |
+| | `PATCH` | `/orders/{id}` | Update order status or attributes. |
+| | `DELETE` | `/orders/{id}` | Remove order record. |
+| **Analytics** | `GET` | `/analytics/sales` | Aggregate sales metrics with monthly and yearly rollups. |
+| | `GET` | `/analytics/customers` | Top customer rankings and customer segment breakdowns. |
+| | `GET` | `/analytics/products` | Top product volume rankings and category breakdowns. |
+| | `GET` | `/analytics/regions` | Regional revenue distribution and fulfillment statistics. |
+| | `GET` | `/analytics/marketing` | Marketing channel performance and acquisition ROI. |
+| | `GET` | `/analytics/ratings` | Rating sentiment distributions and delivery correlations. |
+| **Machine Learning**| `POST` | `/ml/predict` | Real-time order return risk scoring and contributing factors. |
+| **AI Reports** | `POST` | `/ai/reports/orders` | Executive sales performance narrative and trend insights. |
+| | `POST` | `/ai/reports/customer-ratings`| Analysis of customer sentiment and review drivers. |
+| | `POST` | `/ai/reports/customer-segments`| Strategic RFM segment targeting recommendations. |
+| **RAG Assistant** | `POST` | `/ai/rag/query` | Grounded semantic Q&A with citation tracking and guard. |
 
 ---
 
 ### API Usage Examples
 
-#### 1. Customer CRUD (POST /api/v1/customers)
+#### 1. Customer CRUD (POST /customers)
 ```bash
-curl -X POST "http://localhost:8000/api/v1/customers" \
+curl -X POST "http://localhost:8000/customers" \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "CUST-99001",
@@ -427,9 +432,9 @@ curl -X POST "http://localhost:8000/api/v1/customers" \
 }
 ```
 
-#### 2. Order Return Risk Inference (POST /api/v1/ml/predict)
+#### 2. Order Return Risk Inference (POST /ml/predict)
 ```bash
-curl -X POST "http://localhost:8000/api/v1/ml/predict" \
+curl -X POST "http://localhost:8000/ml/predict" \
   -H "Content-Type: application/json" \
   -d '{
     "customer_id": "CUST-000001",
@@ -455,9 +460,9 @@ curl -X POST "http://localhost:8000/api/v1/ml/predict" \
 }
 ```
 
-#### 3. Grounded RAG Assistant (POST /api/v1/ai/rag/query)
+#### 3. Grounded RAG Assistant (POST /ai/rag/query)
 ```bash
-curl -X POST "http://localhost:8000/api/v1/ai/rag/query" \
+curl -X POST "http://localhost:8000/ai/rag/query" \
   -H "Content-Type: application/json" \
   -d '{"question": "Which product category experiences the highest return rate?"}'
 ```
@@ -488,7 +493,7 @@ curl -X POST "http://localhost:8000/api/v1/ai/rag/query" \
 
 #### 4. Hallucination Guard Out-of-Domain Rejection
 ```bash
-curl -X POST "http://localhost:8000/api/v1/ai/rag/query" \
+curl -X POST "http://localhost:8000/ai/rag/query" \
   -H "Content-Type: application/json" \
   -d '{"question": "What is the capital city of France?"}'
 ```
@@ -553,7 +558,7 @@ Evaluated 4 distinct model families with differing inductive biases on the 2025 
 
 ## AI Executive Business Reports
 
-The `/api/v1/ai/reports` service generates executive narratives by combining deterministic SQL aggregations with large language model synthesis:
+The `/ai/reports` service generates executive narratives by combining deterministic SQL aggregations with large language model synthesis:
 
 1. **Deterministic Data Grounding**: Exact financial and behavioral metrics are computed directly by PostgreSQL aggregation queries in [`app/services/ai_reports.py`](app/services/ai_reports.py).
 2. **Constrained Prompt Architecture**: The LLM receives pre-computed statistics in its context and is strictly instructed to generate summaries, key insights, and strategic recommendations without altering numbers.
@@ -561,9 +566,9 @@ The `/api/v1/ai/reports` service generates executive narratives by combining det
 4. **Defensive Fallback Mechanism**: If upstream network timeouts or API quotas occur, the service automatically produces deterministic analytical narratives, guaranteeing `200 OK` availability.
 
 ### Supported Executive Reports
-- **Orders & Sales Report (`POST /api/v1/ai/reports/orders`)**: Period-over-period sales trajectories, revenue drivers, and high-margin product opportunities.
-- **Customer Ratings Report (`POST /api/v1/ai/reports/customer-ratings`)**: Rating sentiment distribution and correlation with fulfillment logistics.
-- **Customer Segmentation Report (`POST /api/v1/ai/reports/customer-segments`)**: Behavioral RFM distribution (Champions, Loyal, At Risk, Lost) with targeted re-engagement strategies.
+- **Orders & Sales Report (`POST /ai/reports/orders`)**: Period-over-period sales trajectories, revenue drivers, and high-margin product opportunities.
+- **Customer Ratings Report (`POST /ai/reports/customer-ratings`)**: Rating sentiment distribution and correlation with fulfillment logistics.
+- **Customer Segmentation Report (`POST /ai/reports/customer-segments`)**: Behavioral RFM distribution (Champions, Loyal, At Risk, Lost) with targeted re-engagement strategies.
 
 ---
 
@@ -573,12 +578,12 @@ The RAG subsystem ([`rag/`](rag/)) enables natural-language querying over busine
 
 ### Knowledge Base Composition
 6 structured domain documents in [`rag/documents/`](rag/documents/) containing verified platform analytics:
-1. `01_executive_summary.md` — Company overview, macroeconomic KPIs, high-level financials.
-2. `02_sales_performance.md` — Time-series trends, monthly seasonality, AOV dynamics.
-3. `03_product_categories.md` — Category margins, brand performance, return rates.
-4. `04_customer_segments.md` — RFM segmentation, customer lifetime value, cohort retention.
-5. `05_operational_metrics.md` — Carrier performance, fulfillment delay analysis, rating impact.
-6. `06_ml_churn_model.md` — Predictive modeling findings, risk factors, checkout scoring.
+1. `business_metrics.md` — Macroeconomic revenue trends, financial reconciliation (gross vs. net), AOV dynamics.
+2. `product_analysis.md` — Product margins, category profitability, return rates by department.
+3. `customer_analysis.md` — Customer distribution, RFM segmentation tiers, lifetime value concentration.
+4. `regional_analysis.md` — Geographic sales volume, logistics performance, regional return patterns.
+5. `rating_analysis.md` — Review distribution, fulfillment delay correlation, sentiment breakdown.
+6. `marketing_analysis.md` — Channel acquisition ROI, promotional discount depth vs. operating margin.
 
 ### Retrieval & Ingestion Architecture
 - **Chunking Strategy**: Markdown headers (`##`) serve as section boundaries, yielding 60 self-contained knowledge chunks.
@@ -586,6 +591,16 @@ The RAG subsystem ([`rag/`](rag/)) enables natural-language querying over busine
 - **Vector Indexing**: Stored in `rag_chunks.embedding` with an HNSW index using cosine similarity distance (`<=>`).
 - **Hallucination Guard**: Calibrated via [`rag/calibrate.py`](rag/calibrate.py) against in-domain and out-of-domain probe sets. Queries with top similarity scores below **0.40** are rejected immediately with `answered: false`, executing zero external LLM calls.
 - **Citation Attribution**: Every factual assertion generated by the model includes bracketed citations `[n]` mapping directly to returned source excerpts.
+
+---
+
+## System Assumptions & Technical Boundaries
+
+1. **Revenue Accounting Standard**: All financial metrics throughout the database, analytics endpoints, and reports are based on `net_sales` (post-discount realized revenue) rather than unadjusted `gross_sales`.
+2. **Pre-Fulfillment Inference Scope**: The checkout return prediction model strictly relies on data available before order dispatch. Post-delivery factors (such as delivery delay or customer review ratings) are excluded from feature vectors.
+3. **Deterministic LLM Resilience**: Upstream OpenRouter LLM completions are decoupled from critical path availability; deterministic template fallbacks ensure continuous uptime even during network outages.
+4. **Vector Index Capacity**: Embeddings use 1024-dimensional dense vectors to operate well within PostgreSQL pgvector's 2,000-dimension HNSW indexing limit.
+
 
 ---
 
