@@ -1,34 +1,60 @@
-# Env / secrets
+# Environment & Secrets
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# Python
+# Python & Build Artifacts
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
 .venv/
 venv/
-*.egg-info/
+env/
+
+# Testing & Coverage
 .pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Jupyter Notebook Artifacts
 .ipynb_checkpoints/
+*-checkpoint.ipynb
+.jupyter/
+.jupyter_clean/
 
-# Data (large / downloaded from Kaggle, not committed)
-# NOTE: data/*.csv only matches files directly in data/, NOT nested ones —
-# this bit us once already (see INTERVIEW_PREP.md). Use ** to match nested paths.
-data/**/*.csv
-data/**/*.zip
-
-# ML artifacts (kept, but not intermediate junk)
-ml/*.log
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
+# IDE & Editor Configuration
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Internal candidate assessment docs (kept locally, ignored from repo)
+# Logs & Diagnostics
+*.log
+logs/
+*.out
+
+# Data & Large Archives (Downloaded from Kaggle / external sources)
+# Note the `**`: a bare `data/*.csv` would only match files directly under
+# data/, not the nested data/dataset/ the loaders actually read from.
+data/**/*.csv
+data/**/*.zip
+data/**/*.parquet
+data/**/*.tar.gz
+
+# Private working notes — kept on the local machine, never committed.
 INTERVIEW_PREP.md
 RULES.md
 SCOPE.md
 TASKS.md
+

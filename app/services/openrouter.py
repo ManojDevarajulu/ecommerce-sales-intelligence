@@ -1,20 +1,22 @@
 """
-app/services/openrouter.py — T116/T117: OpenRouter client wrapper + the
-deterministic fallback path.
+app/services/openrouter.py — OpenRouter client wrapper + the deterministic
+fallback path.
 
-Design (see INTERVIEW_PREP.md 2026-09-13, "Phase 7 planning" for the full
-reasoning): every report caller gets the SAME `ReportNarrative` shape
-whether or not an LLM call actually happened - `generate_narrative()` never
-raises, and always returns `(ReportNarrative, meta)`. This is deliberately
-NOT built around OpenRouter's `response_format={"type": "json_schema"}`
-strict mode - that mode isn't reliably supported across free OpenRouter
-models (SCOPE.md recommends a `:free` model for this assessment), so
-betting the whole report on it would turn a model having an off day into a
-500 instead of a still-valid report. Instead: prompt for JSON in plain
-text, parse leniently, validate with Pydantic, and fall back to the
-deterministic generator on ANY failure (no key, network error, non-200,
-malformed JSON, schema violation) - never surface an LLM failure to the
-caller as an error.
+The central design rule: every report caller gets the SAME
+`ReportNarrative` shape whether or not an LLM call actually happened.
+`generate_narrative()` never raises and always returns
+`(ReportNarrative, meta)`, with `meta.generated_by` saying which path
+produced it.
+
+This is deliberately NOT built around OpenRouter's
+`response_format={"type": "json_schema"}` strict mode. That mode isn't
+reliably supported across the free models this project targets, so
+depending on it would turn "the model had an off day" into a 500 instead
+of a still-valid report. Instead: ask for JSON in plain text, parse
+leniently, validate with Pydantic, and fall back to the deterministic
+generator on ANY failure — no API key, network error, non-2xx, malformed
+JSON, or schema violation. An LLM problem degrades the narrative; it never
+becomes the caller's error.
 """
 import json
 import re
@@ -35,7 +37,10 @@ class OpenRouterSettings(BaseSettings):
 
     openrouter_api_key: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
-    openrouter_model: str = "qwen/qwen-2.5-72b-instruct:free"
+    # Kept identical to `.env.example`'s documented value, so a run without
+    # `OPENROUTER_MODEL` set behaves the same as the documented setup rather
+    # than silently using some other model.
+    openrouter_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
 
 
 settings = OpenRouterSettings()
@@ -61,9 +66,9 @@ def _extract_json_object(text: str) -> dict:
 
 
 def chat_completion(prompt: str, temperature: float = 0.3) -> str | None:
-    """The one place the OpenRouter chat API is called - shared by the
-    business reports (T116) and the RAG assistant (T141), so there is one
-    key, one model id and one failure contract to explain.
+    """The one place the OpenRouter chat API is called — shared by the
+    business reports and the RAG assistant, so there is one key, one model
+    id and one failure contract across the whole application.
 
     Returns the raw text content of the model's reply, or None on any
     failure (no key configured, network error, non-2xx, unexpected shape).

@@ -106,7 +106,7 @@ erDiagram
         varchar doc_title
         varchar section_title
         text chunk_text
-        vector embedding "384-dim, all-MiniLM-L6-v2"
+        vector embedding "1024-dim, qwen3-embedding:0.6b (Ollama)"
         jsonb metadata
     }
 ```
