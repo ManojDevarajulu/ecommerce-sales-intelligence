@@ -214,11 +214,6 @@ With Ollama running locally (`ollama pull qwen3-embedding:0.6b`), chunk and embe
 python -m rag.ingest
 ```
 
-### 7. Access Application Interfaces
-- **Interactive Web Chat Interface**: [http://localhost:8000/](http://localhost:8000/)
-- **Swagger Interactive API Documentation**: [http://localhost:8000/docs](http://localhost:8000/docs)
-- **OpenAPI JSON Specification**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
-
 ---
 
 ## Environment Configuration
@@ -228,14 +223,15 @@ Key environment settings defined in [`.env.example`](.env.example):
 | Variable | Default Value | Purpose |
 |---|---|---|
 | `POSTGRES_USER` | `ecommerce` | PostgreSQL database superuser |
-| `POSTGRES_PASSWORD` | `change_me` | PostgreSQL database password |
-| `POSTGRES_DB` | `ecommerce` | PostgreSQL default database name |
+| `POSTGRES_PASSWORD` | `password` | PostgreSQL database password |
+| `POSTGRES_DB` | `db` | PostgreSQL default database name |
+| `POSTGRES_HOST` | `db` | PostgreSQL database host |
 | `POSTGRES_PORT` | `5432` | Internal Docker container network port |
-| `POSTGRES_PORT_EXTERNAL` | `5435` | Host-accessible PostgreSQL port mapping |
-| `DATABASE_URL` | `postgresql+psycopg://...@db:5432/...` | SQLAlchemy container connection URI |
+| `DATABASE_URL` | `url` | SQLAlchemy connection URI |
 | `OPENROUTER_API_KEY` | `""` | OpenRouter API authentication key |
+| `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenRouter API base endpoint |
 | `OPENROUTER_MODEL` | `nvidia/nemotron-3-super-120b-a12b:free` | Primary model for reports and RAG synthesis |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama embedding server endpoint |
+| `OLLAMA_BASE_URL` | `base_url` | Ollama embedding server endpoint |
 | `EMBEDDING_MODEL` | `qwen3-embedding:0.6b` | Embedding model identifier |
 | `EMBEDDING_DIM` | `1024` | Vector dimension matching `vector(1024)` |
 | `RAG_SIMILARITY_THRESHOLD` | `0.40` | Cosine similarity cutoff for hallucination guard |
