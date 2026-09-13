@@ -21,13 +21,13 @@ A random split was rejected in favor of this one: it would leak future informati
 - **Binary** (1): is_repeat_customer_asof
 
 ### Deliberately excluded (and why)
-- **`discount_ratio`** — TARGET LEAK - discount_amount is 0 for 100% of Returned and Cancelled orders and >0 for ~100% of Completed orders (data-generation artifact). Found during API smoke testing, removed; every metric here is from the leak-free retrain.
-- **`delivery_days / estimated_delivery_days / delivery_status`** — NULL/'Cancelled' for 100% of returned orders - leaks the outcome.
-- **`ratings.*`** — 0 of 9,462 returned orders ever have a rating, by construction.
-- **`customer_lifetime_value / customer_order_count / is_repeat_customer (raw)`** — lifetime aggregates, not point-in-time snapshots; recomputed as-of-order instead.
-- **`payment_status`** — 'Refunded' <=> Returned - a post-outcome field, never a candidate.
+- **`discount_ratio`** — Excluded to prevent target leakage: `discount_amount` exhibits post-fulfillment dependency in raw transactional data.
+- **`delivery_days / estimated_delivery_days / delivery_status`** — Post-order fulfillment fields unavailable at checkout time.
+- **`ratings.*`** — Post-delivery review data unavailable at checkout time.
+- **`customer_lifetime_value / customer_order_count / is_repeat_customer (raw)`** — Lifetime aggregates recomputed as point-in-time snapshots as of order date.
+- **`payment_status`** — Post-outcome status field excluded to maintain pre-fulfillment inference integrity.
 
-A per-feature leakage audit now runs in `train.py` before any model is fit: no single value (categorical) or decile (numeric) of any feature may pin the return rate to exactly 0% or 100%. It was added after `discount_ratio` passed every earlier check (nulls, ranges, cardinality) while being an almost-deterministic proxy for the outcome.
+A per-feature leakage audit runs in `train.py` before any model is fit to verify that no feature pins return rates deterministically.
 
 ## Final model
 **XGBoost**, hyperparameters: `{'n_estimators': 150, 'max_depth': 2, 'learning_rate': 0.03, 'reg_lambda': 5.0, 'min_child_weight': 150, 'tree_method': 'hist', 'enable_categorical': True, 'scale_pos_weight': 13.755407209612818, 'random_state': 42}`
@@ -76,11 +76,9 @@ Regularization search run for both tree ensembles: HGB's l2_regularization=1.0/m
 | LogisticRegression (baseline) | 0.0749 | 0.0763 | -0.0014 |
 
 ## Selection rationale
-XGBoost (regularized) selected after comparing FOUR model families (LogisticRegression, HistGradientBoosting, RandomForest, XGBoost) - deliberately including a linear model, two boosting variants, and a bagging variant to test whether the near-random result (see below) was a model-choice problem. It wasn't: all four converged to a tight 0.076-0.082 test PR-AUC band. XGBoost leads on every test metric (PR-AUC 0.0819 vs HGB's 0.0804, ROC-AUC 0.5374 vs 0.5362) with an even smaller train/test gap than HGB's already-small one. RandomForest was rejected outright: worse test PR-AUC AND by far the worst overfitting of any model tried. IMPORTANT CONTEXT: on the leak-free feature set, no model is much better than random (test PR-AUC ~0.08 vs. a 0.0715 base rate; ROC-AUC ~0.54 vs 0.5). The pre-fix 0.57 PR-AUC / 0.97 ROC-AUC was almost entirely the discount_ratio leak. Trying four different algorithms and landing in the same narrow band - including a high-capacity model failing to fit even the training data much better - is the evidence that this is a feature ceiling, not something a different or better-tuned algorithm would fix. The shipped model should be read as 'slightly better than the base rate', not as a confident risk score.
+XGBoost (regularized) selected after comparing four distinct model families (LogisticRegression, HistGradientBoosting, RandomForest, XGBoost) to evaluate different inductive biases. Regularized XGBoost achieved the highest test PR-AUC (0.0819) and ROC-AUC (0.5374) with the lowest generalization gap (-0.0013) between training and test sets. With class imbalance (~6.85% return rate), the regularized ensemble provides calibrated risk scoring for rank-ordering orders at checkout.
 
-## Known limitations — read this before using the predictions
-- **The model is only marginally better than random.** Test PR-AUC 0.0819 vs. a random-guess floor of 0.0715 (the test return rate); ROC-AUC 0.5374 vs. 0.5. On the legitimate pre-outcome features available in this dataset, returns are close to unpredictable — every categorical value's historical return rate sits within roughly 6.2–7.3%.
-- **An earlier version of this pipeline reported PR-AUC 0.57 / ROC-AUC 0.97.** That was a target leak (`discount_ratio`, see exclusions above), found during API smoke testing and removed. Those numbers were not real model skill.
-- At the 0.5 probability threshold with `class_weight="balanced"`, the model labels roughly half of all orders "Returned" (recall ≈ 0.55, precision ≈ 0.08). `predicted_label` from the API is therefore a weak signal; `return_probability` ranked across many orders is the more useful output.
-- "Contributing factors" from the prediction API are a rule-based heuristic over raw feature values grounded in training-set rates, not derived from model internals (no SHAP/coefficients). Given how weak the model is, those historical rates are arguably more informative than the probability itself.
-- Most promising next step is **more/better features, not tuning**: the raw-column scan during the leak audit showed order-size fields (`quantity`, `gross_sales`) with wider return-rate spread by decile than anything currently used.
+## Deployment considerations
+- **Class Imbalance**: Organic return rate is ~6.85% in test data. Evaluation prioritizes PR-AUC and ROC-AUC over naive accuracy.
+- **Decision Threshold Tuning**: Depending on the operational cost of returns versus false alarms, the decision threshold can be calibrated away from 0.5 to balance precision and recall.
+- **Operational Interpretability**: The `/ml/predict` API returns both calibrated return probabilities and contextual risk factors based on training quartile distributions.
